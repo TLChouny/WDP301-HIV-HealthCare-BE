@@ -1,4 +1,5 @@
 const  Service  = require('../models/Service');
+const mongoose = require('mongoose');
 
 exports.create = async (req, res) => {
   try {
@@ -44,6 +45,27 @@ exports.deleteById = async (req, res) => {
     const service = await Service.findByIdAndDelete(req.params.id);
     if (!service) return res.status(404).json({ message: 'Service not found' });
     res.status(200).json({ message: 'Service deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.getByCategoryId = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+
+    // Kiểm tra ID hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+      return res.status(400).json({ message: 'Invalid category ID' });
+    }
+
+    // Tìm service có categoryId trùng ObjectId
+    const services = await Service.find({
+      categoryId: new mongoose.Types.ObjectId(categoryId)
+    });
+
+    res.status(200).json({ services });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

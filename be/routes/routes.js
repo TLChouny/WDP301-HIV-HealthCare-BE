@@ -60,6 +60,9 @@ router.route('/services/:id')
   .put(auth, serviceController.updateById)
   .delete(auth, serviceController.deleteById);
 
+router.route('/services/category/:categoryId')
+  .get(serviceController.getByCategoryId); // Get services by category
+    
 // ARVRregimen Routes
 router.route('/arvrregimens')
   .post(auth, arvrregimenController.create)

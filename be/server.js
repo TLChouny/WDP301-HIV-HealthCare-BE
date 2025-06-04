@@ -9,18 +9,27 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
-// Middleware
+// Cấu hình CORS
+const allowedOrigins = [
+  'http://localhost:5173', // Cho môi trường phát triển
+  'https://wdp-301-hiv-health-care-web.vercel.app' // Cho frontend trên Vercel
+];
+
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: (origin, callback) => {
+    // Cho phép yêu cầu không có origin (như từ Postman hoặc các công cụ không phải trình duyệt)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
-
-app.use(cors({
-  origin: 'https://wdp-301-hiv-health-care-web.vercel.app/',
-  credentials: true,
-}));
 app.use(express.json());
+
 // Routes
 app.use('/api', routes);
 

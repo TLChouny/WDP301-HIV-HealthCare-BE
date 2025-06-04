@@ -16,6 +16,11 @@ app.use(cors({
 }));
 app.use(express.json());
 
+app.use(cors({
+  origin: 'https://wdp-301-hiv-health-care-web.vercel.app/',
+  credentials: true,
+}));
+
 // Routes
 app.use('/api', routes);
 

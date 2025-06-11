@@ -43,12 +43,23 @@ router.route('/users/:id')
 
 router.route('/users/login')
   .post(userController.login); // Public login
+router.route('/users/logout')
+  .post(userController.logout); // Protected logout
 
+router.route('/users/forgot-password')
+  .post(userController.forgotPassword); // Public forgot password
+
+router.route('/users/reset-password')
+  .post(userController.resetPassword); // Public reset password
+
+router.route('/users/verify-reset-otp')
+  .post(userController.verifyResetOTP); // Public token verification 
+  
 router.route('/users/verify-otp')
-  .post(userController.verifyOTP);
-   // Public OTP verification
+  .post(userController.verifyOTP); // Public OTP verification
+
 router.route('/users/resend-otp')
-  .post(userController.resendOTP);
+  .post(userController.resendOTP); // Public OTP resend
 
 // Service Routes
 router.route('/services')

@@ -4,6 +4,7 @@ const ResultSchema = new Schema({
   resultName: { type: String, required: true },
   resultDescription: { type: String },
   bookingId: { type: Schema.Types.ObjectId, ref: 'Booking', required: true },
+  arvregimenId: { type: Schema.Types.ObjectId, ref: 'ARVRegimen', required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 },

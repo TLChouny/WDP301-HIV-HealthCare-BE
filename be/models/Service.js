@@ -6,10 +6,8 @@ const ServiceSchema = new mongoose.Schema(
   serviceDescription: { type: String },
   categoryId: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
   serviceImage: { type: String },
-  timeSlot: { type: String },
   duration: { type: Number },
   price: { type: String },
-  doctorName: { type: String },
   },
   { timestamps: false }
 );

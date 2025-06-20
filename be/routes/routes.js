@@ -34,7 +34,7 @@ router.route('/blogs/:id')
 // User Routes
 router.route('/users')
   .post(userController.create) // Public registration
-  .get(auth, userController.getAll);
+  .get(userController.getAll);
 
 router.route('/users/:id')
   .get(auth, userController.getById)

@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { sendOTP } = require('../utils/sendEmail');
 const { sendSMS } = require('../utils/sendSMS');
 const bcrypt = require('bcryptjs');
+
 const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
 };
@@ -29,9 +30,9 @@ exports.create = async (req, res) => {
 
     const otp = generateOTP();
     const otpExpires = Date.now() + 1 * 60 * 1000; // 1 phút
-
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log("Original password:", password, "Hashed password:", hashedPassword); // Debug
+    console.log("Original password:", password, "Hashed password:", hashedPassword);
+
     const user = new User({
       userName: userName || undefined,
       email,
@@ -43,6 +44,7 @@ exports.create = async (req, res) => {
     });
 
     await user.save();
+    console.log("User saved with email:", email, "password hash:", user.password);
 
     const subject = 'Verify Your Email - OTP Code';
     const text = `Your OTP code is ${otp}. It will expire in 1 minute.`;
@@ -79,11 +81,12 @@ exports.verifyOTP = async (req, res) => {
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
+    console.log("User verified:", user.email, "isVerified:", user.isVerified);
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' } // Tăng thời gian
+      { expiresIn: '1h' }
     );
 
     res.status(200).json({ message: 'Verification successful', token });
@@ -139,47 +142,47 @@ exports.login = async (req, res) => {
     console.log("Login Request Body:", req.body);
 
     if (!email && !phone_number) {
-      return res.status(400).json({ message: 'Email or phone number is required' });
+      return res.status(400).json({ message: "Email or phone number is required" });
     }
 
     let user;
     if (phone_number) {
       user = await User.findOne({ phone_number });
+      console.log(`Searched by phone: ${phone_number}, found: ${!!user}`);
     } else {
       user = await User.findOne({ email });
+      console.log(`Searched by email: ${email}, found: ${!!user}`);
     }
 
     if (!user) {
-      console.log(`User not found for email: ${email} or phone: ${phone_number}`);
-      return res.status(404).json({ message: 'User not found' });
+      console.log(`No user found for ${email || phone_number}`);
+      return res.status(404).json({ message: "User not found" });
     }
 
+    console.log("User found:", user.email || user.phone_number, "isVerified:", user.isVerified);
     if (!user.isVerified) {
-      return res.status(403).json({ message: 'Please verify your email or phone number before logging in' });
+      console.log("User not verified:", user.email || user.phone_number);
+      return res.status(403).json({ message: "Please verify your email or phone number" });
     }
 
-    console.log("Stored Password Hash before compare:", user.password);
+    console.log("Stored password hash:", user.password);
     const isMatch = await user.comparePassword(password);
-    console.log("Password Match Result for user:", user.email, "is:", isMatch);
+    console.log("Password match result for user:", user.email || user.phone_number, "is:", isMatch);
     if (!isMatch) {
-      console.log(`Invalid password for user: ${user.email}`);
-      return res.status(401).json({ message: 'Invalid credentials' });
+      console.log("Invalid password for:", user.email || user.phone_number);
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: "1h" });
     user.accessToken = token;
-    user.tokenExpiresAt = new Date(Date.now() + 1 * 60 * 1000);
+    user.tokenExpiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000);
     await user.save();
+    console.log("Login successful, token generated:", token);
 
     res.status(200).json({ token });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    console.error("Login error:", error.message, error.stack);
+    res.status(500).json({ message: "Server error during login" });
   }
 };
 
@@ -290,12 +293,11 @@ exports.resetPassword = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Gán mật khẩu mới để middleware pre('save') xử lý
-    user.password = newPassword;
+    user.password = newPassword; // Sẽ được băm lại trong pre('save')
     user.accessToken = undefined;
     user.tokenExpiresAt = undefined;
     await user.save();
-    console.log("Password after save in reset:", user.password); // Debug
+    console.log("Password after save in reset:", user.password);
 
     const newToken = jwt.sign(
       { id: user._id, role: user.role },

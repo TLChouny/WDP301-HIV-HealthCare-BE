@@ -15,10 +15,11 @@ const bookingSchema = new mongoose.Schema({
   doctorName: { type: String },
   originalPrice: { type: Number },
   notes: { type: String },
+  meetLink: { type: String }, // Link Google Meet cho tư vấn trực tuyến
   currency: { type: String, default: "VND" },
   status: {
     type: String,
-    enum: ["cancel", "pending", "checked-in", "completed", "checked-out", "reviewed"],
+    enum: ["cancel", "cancelled", "pending", "confirmed", "checked-in", "completed", "checked-out", "reviewed"],
     default: "pending",
   },
   isAnonymous: { type: Boolean, default: false },

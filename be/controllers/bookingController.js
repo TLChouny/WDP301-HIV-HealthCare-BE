@@ -94,8 +94,26 @@ exports.create = async (req, res) => {
 // 📌 Get all bookings
 exports.getAll = async (req, res) => {
   try {
-    const bookings = await Booking.find().populate('serviceId').populate('userId');
-    res.status(200).json(bookings);
+    const bookings = await Booking.find()
+      .populate('serviceId', 'name serviceName')
+      .populate('userId', 'fullName email phone');
+    
+    // Transform data to match frontend interface
+    const transformedBookings = bookings.map(booking => ({
+      _id: booking._id,
+      bookingCode: booking.bookingCode,
+      customerName: booking.customerName,
+      serviceId: {
+        serviceName: booking.serviceId?.name || booking.serviceId?.serviceName || booking.serviceName || 'Không xác định'
+      },
+      bookingDate: booking.bookingDate,
+      startTime: booking.startTime,
+      doctorName: booking.doctorName,
+      status: booking.status,
+      meetLink: booking.meetLink
+    }));
+    
+    res.status(200).json(transformedBookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

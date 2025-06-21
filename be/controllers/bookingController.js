@@ -103,6 +103,8 @@ exports.getAll = async (req, res) => {
       _id: booking._id,
       bookingCode: booking.bookingCode,
       customerName: booking.customerName,
+      customerPhone: booking.customerPhone,
+      customerEmail: booking.customerEmail,
       serviceId: {
         serviceName: booking.serviceId?.name || booking.serviceId?.serviceName || booking.serviceName || 'Không xác định'
       },
@@ -110,7 +112,8 @@ exports.getAll = async (req, res) => {
       startTime: booking.startTime,
       doctorName: booking.doctorName,
       status: booking.status,
-      meetLink: booking.meetLink
+      meetLink: booking.meetLink,
+      isAnonymous: booking.isAnonymous
     }));
     
     res.status(200).json(transformedBookings);

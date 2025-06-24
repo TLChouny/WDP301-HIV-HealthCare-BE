@@ -94,7 +94,7 @@ exports.create = async (req, res) => {
 exports.getAll = async (req, res) => {
   try {
     const bookings = await Booking.find()
-      .populate('serviceId', 'name serviceName')
+      .populate('serviceId', 'name serviceName price')
       .populate('userId', 'fullName email phone');
     
     // Transform data to match frontend interface
@@ -105,10 +105,12 @@ exports.getAll = async (req, res) => {
       customerPhone: booking.customerPhone,
       customerEmail: booking.customerEmail,
       serviceId: {
-        serviceName: booking.serviceId?.name || booking.serviceId?.serviceName || booking.serviceName || 'Không xác định'
+        serviceName: booking.serviceId?.name || booking.serviceId?.serviceName || booking.serviceName || 'Không xác định',
+        price: booking.serviceId?.price
       },
       bookingDate: booking.bookingDate,
       startTime: booking.startTime,
+      endTime: booking.endTime,
       doctorName: booking.doctorName,
       status: booking.status,
       meetLink: booking.meetLink,

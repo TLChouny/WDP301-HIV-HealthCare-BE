@@ -1,5 +1,6 @@
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
+const Notification = require('../models/Notification');
 
 // Generate 6-digit random booking code
 const generateRandomSixDigitNumber = () => {
@@ -83,8 +84,16 @@ exports.create = async (req, res) => {
       bookingCode
     });
 
-    await newBooking.save();
-    res.status(201).json(newBooking);
+    const savedBooking = await newBooking.save();
+
+    // Tạo notification tự động
+    await Notification.create({
+      notiName: 'Đặt lịch thành công',
+      notiDescription: 'Bạn đã đặt lịch thành công!',
+      bookingId: savedBooking._id
+    });
+
+    res.status(201).json(savedBooking);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

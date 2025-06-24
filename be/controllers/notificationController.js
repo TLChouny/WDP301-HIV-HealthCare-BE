@@ -1,4 +1,4 @@
-  const  Notification  = require('../models/Notification');
+const  Notification  = require('../models/Notification');
 
   exports.create = async (req, res) => {
     try {
@@ -12,7 +12,14 @@
 
   exports.getAll = async (req, res) => {
     try {
-      const notifications = await Notification.find();
+      const notifications = await Notification.find()
+        .populate({
+          path: 'bookingId',
+          populate: [
+            { path: 'serviceId' },
+            { path: 'userId' }
+          ]
+        });
       res.status(200).json(notifications);
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -44,6 +51,28 @@
       const notification = await Notification.findByIdAndDelete(req.params.id);
       if (!notification) return res.status(404).json({ message: 'Notification not found' });
       res.status(200).json({ message: 'Notification deleted successfully' });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };
+
+  exports.getByUserId = async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const notifications = await Notification.find()
+        .populate({
+          path: 'bookingId',
+          match: { userId: userId },
+          populate: [
+            { path: 'serviceId' },
+            { path: 'userId' }
+          ]
+        });
+
+      // Lọc ra những notification có bookingId (tức là match userId)
+      const filtered = notifications.filter(n => n.bookingId);
+
+      res.status(200).json(filtered);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }

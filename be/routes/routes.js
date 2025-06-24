@@ -130,6 +130,8 @@ router.route('/notifications/:id')
   .get(notificationController.getById)
   .put(auth, notificationController.updateById)
   .delete(auth, notificationController.deleteById);
+router.route('/notifications/user/:userId')
+  .get(notificationController.getByUserId); // Get notifications by UserID
 
 // Review Routes
 router.route('/reviews')

@@ -1,9 +1,20 @@
-const  Result  = require('../models/Result');
+const Result = require('../models/Result');
+const Booking = require('../models/Booking'); // Thêm dòng này
 
 exports.create = async (req, res) => {
   try {
     const result = new Result(req.body);
     const savedResult = await result.save();
+
+    // Cập nhật status của booking thành 'completed'
+    if (savedResult.bookingId) {
+      await Booking.findByIdAndUpdate(
+        savedResult.bookingId,
+        { status: 'completed' },
+        { new: true }
+      );
+    }
+
     res.status(201).json(savedResult);
   } catch (error) {
     res.status(400).json({ message: error.message });

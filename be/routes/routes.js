@@ -97,6 +97,9 @@ router.route('/bookings/:id')
   // .patch(auth, bookingController.updateById) // Thêm PATCH method
   .delete(auth, bookingController.deleteById);
 
+router.route('/bookings/doctor/:doctorName')
+  .get(bookingController.getBookingsByDoctorName); // Get bookings by UserID
+
 // Order Routes
 router.post("/create-payment-link", paymentController.createPaymentLink);
 router.get("/order/:orderId", paymentController.getPaymentByOrderCode);

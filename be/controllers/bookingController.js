@@ -152,6 +152,27 @@ exports.getBookingsByUserId = async (req, res) => {
   }
 };
 
+// 📌 Get bookings by doctorName
+exports.getBookingsByDoctorName = async (req, res) => {
+  try {
+    const { doctorName } = req.params;
+    if (!doctorName) {
+      return res.status(400).json({ message: "Missing doctorName parameter" });
+    }
+
+    const bookings = await Booking.find({ doctorName })
+      .populate('serviceId')
+      .populate('userId');
+    if (!bookings || bookings.length === 0) {
+      return res.status(404).json({ message: 'No bookings found for this doctor' });
+    }
+
+    res.status(200).json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // 📌 Get booking by ID
 exports.getById = async (req, res) => {
   try {

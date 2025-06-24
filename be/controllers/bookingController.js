@@ -94,29 +94,28 @@ exports.create = async (req, res) => {
 exports.getAll = async (req, res) => {
   try {
     const bookings = await Booking.find()
-      .populate('serviceId', 'name serviceName price')
-      .populate('userId', 'fullName email phone');
-    
-    // Transform data to match frontend interface
+      .populate('serviceId') // Lấy toàn bộ field của service
+      .populate('userId');   // Lấy toàn bộ field của user
+
+    // Trả về toàn bộ object serviceId và userId
     const transformedBookings = bookings.map(booking => ({
       _id: booking._id,
       bookingCode: booking.bookingCode,
       customerName: booking.customerName,
       customerPhone: booking.customerPhone,
       customerEmail: booking.customerEmail,
-      serviceId: {
-        serviceName: booking.serviceId?.name || booking.serviceId?.serviceName || booking.serviceName || 'Không xác định',
-        price: booking.serviceId?.price
-      },
+      serviceId: booking.serviceId, // Trả về toàn bộ object service
+      userId: booking.userId,       // Trả về toàn bộ object user
       bookingDate: booking.bookingDate,
       startTime: booking.startTime,
       endTime: booking.endTime,
       doctorName: booking.doctorName,
       status: booking.status,
       meetLink: booking.meetLink,
-      isAnonymous: booking.isAnonymous
+      isAnonymous: booking.isAnonymous,
+      notes: booking.notes
     }));
-    
+
     res.status(200).json(transformedBookings);
   } catch (error) {
     res.status(500).json({ message: error.message });

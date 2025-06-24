@@ -90,7 +90,6 @@ exports.create = async (req, res) => {
   }
 };
 
-
 // 📌 Get all bookings
 exports.getAll = async (req, res) => {
   try {
@@ -117,6 +116,27 @@ exports.getAll = async (req, res) => {
     }));
     
     res.status(200).json(transformedBookings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 📌 Get bookings by UserID
+exports.getBookingsByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({ message: "Missing userId parameter" });
+    }
+
+    const bookings = await Booking.find({ userId })
+      .populate('serviceId')
+      .populate('userId');
+    if (!bookings || bookings.length === 0) {
+      return res.status(404).json({ message: 'No bookings found for this user' });
+    }
+
+    res.status(200).json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

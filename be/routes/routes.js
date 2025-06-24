@@ -9,6 +9,8 @@ const bookingController = require('../controllers/bookingController');
 const resultController = require('../controllers/resultController');
 const notificationController = require('../controllers/notificationController');
 const reviewController = require('../controllers/reviewController');
+const paymentController = require('../controllers/paymentController');
+const webhookController = require('../controllers/webhookCotroller');
 const auth = require('../middleware/auth');
 
 // Category Routes
@@ -94,6 +96,17 @@ router.route('/bookings/:id')
   .put(auth, bookingController.updateById)
   // .patch(auth, bookingController.updateById) // Thêm PATCH method
   .delete(auth, bookingController.deleteById);
+
+// Order Routes
+router.post("/create-payment-link", paymentController.createPaymentLink);
+router.get("/order/:orderId", paymentController.getPaymentByOrderCode);
+router.put("/order/:orderCode", paymentController.updatePaymentStatus);
+router.get("/all", paymentController.getAllPayments);
+
+// Webhook Routes
+router.post("/receive-hook", webhookController.handlePaymentWebhook);
+router.get("/receive-hook-get", webhookController.handleWebhook);
+
 
 router.route('/bookings/user/:userId')
   .get(auth, bookingController.getBookingsByUserId); // Get bookings by UserID

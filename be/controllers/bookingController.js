@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 
 // Generate 6-digit random booking code
 const generateRandomSixDigitNumber = () => {
@@ -193,6 +194,32 @@ exports.updateById = async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    // Nếu cập nhật meetLink, gửi notification cho user và doctor
+    if (req.body.meetLink) {
+      // Gửi cho user
+      if (booking.userId) {
+        await Notification.create({
+          notiName: 'Link tư vấn đã sẵn sàng',
+          notiDescription: `Link Google Meet: ${req.body.meetLink}`,
+          userId: booking.userId,
+          bookingId: booking._id
+        });
+      }
+      // Gửi cho doctor (nếu doctorName là tên user)
+      if (booking.doctorName) {
+        const doctorUser = await User.findOne({ fullName: booking.doctorName });
+        if (doctorUser) {
+          await Notification.create({
+            notiName: 'Lịch tư vấn mới',
+            notiDescription: `Bạn có lịch tư vấn với link: ${req.body.meetLink}`,
+            userId: doctorUser._id,
+            bookingId: booking._id
+          });
+        }
+      }
+    }
+
     res.status(200).json(booking);
   } catch (error) {
     res.status(400).json({ message: error.message });

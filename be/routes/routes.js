@@ -94,7 +94,7 @@ router.route('/bookings')
 router.route('/bookings/:id')
   .get(bookingController.getById)
   .put(auth, bookingController.updateById)
-  // .patch(auth, bookingController.updateById) // Thêm PATCH method
+  .patch(auth, bookingController.updateById)
   .delete(auth, bookingController.deleteById);
 
 router.route('/bookings/doctor/:doctorName')

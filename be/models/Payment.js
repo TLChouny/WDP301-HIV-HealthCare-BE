@@ -15,6 +15,7 @@ const PaymentSchema = new mongoose.Schema({
   cancelUrl: { type: String },
   checkoutUrl: { type: String },
   qrCode: { type: String },
+  bookingIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Booking" }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

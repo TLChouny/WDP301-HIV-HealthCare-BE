@@ -67,9 +67,10 @@ const handlePaymentWebhook = async (req, res) => {
     }
 
     const bookingsToUpdate = await Booking.find({
-      paymentID,
-      status: "completed",
+      _id: { $in: payment.bookingIds },
+      status: "pending",
     });
+    console.log(`🔍 Found ${bookingsToUpdate.length} bookings with paymentID: ${paymentID}`);
 
     if (bookingsToUpdate.length === 0) {
       console.log(`ℹ️ No bookings to update with paymentID: ${paymentID}`);
@@ -84,7 +85,7 @@ const handlePaymentWebhook = async (req, res) => {
     }
 
     const updated = await Booking.updateMany(
-      { paymentID, status: "completed" },
+      { _id: { $in: payment.bookingIds }, status: "pending" },
       { $set: { status: "checked-out", updatedAt: new Date() } }
     );
 

@@ -8,14 +8,14 @@ const bookingSchema = new mongoose.Schema({
   customerPhone: { type: String },
   serviceId: { type: Schema.Types.ObjectId, ref: 'Service', required: true },
   serviceName: { type: String },
-  bookingDate: { type: Date, required: true }, // ✅ đổi từ String => Date
-  startTime: { type: String, required: true }, // giờ dạng HH:mm
+  bookingDate: { type: Date, required: true },
+  startTime: { type: String, required: true }, 
   endTime: { type: String },
   duration: { type: Number },
   doctorName: { type: String },
   originalPrice: { type: Number },
   notes: { type: String },
-  meetLink: { type: String }, // Link Google Meet cho tư vấn trực tuyến
+  meetLink: { type: String },
   currency: { type: String, default: "VND" },
   status: {
     type: String,

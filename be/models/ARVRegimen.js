@@ -1,13 +1,16 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const ARVRregimenSchema = new Schema({
-  arvName: { type: String, required: true },
-  arvDescription: { type: String },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-},
-{ timestamps: true }
+const ARVRregimenSchema = new Schema(
+  {
+    arvName: { type: String, required: true },
+    arvDescription: { type: String },
+    drugs: [{ type: String }], // Danh sách thuốc
+    dosages: [{ type: String }], // Liều dùng
+    contraindications: [{ type: String }], // Chống chỉ định
+    sideEffects: [{ type: String }], // Tác dụng phụ
+  },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("ARVRregimen", ARVRregimenSchema);

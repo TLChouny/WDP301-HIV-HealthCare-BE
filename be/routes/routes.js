@@ -63,6 +63,13 @@ router.route('/users/verify-otp')
 router.route('/users/resend-otp')
   .post(userController.resendOTP); // Public OTP resend
 
+// CRUD Work Schedule for doctor
+router.get('/users/:id/work-schedule', userController.getWorkSchedule);
+
+router.put('/users/:id/work-schedule', userController.updateWorkSchedule);
+
+router.delete('/users/:id/work-schedule', userController.clearWorkSchedule);
+  
 // Service Routes
 router.route('/services')
   .post(auth, serviceController.create)

@@ -359,3 +359,74 @@ exports.deleteById = async (req, res) => {
     res.status(500).json({ message: 'Server error during user deletion' });
   }
 };
+
+// Lấy lịch làm việc của doctor
+exports.getWorkSchedule = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('role dayOfWeek startTimeInDay endTimeInDay startDay endDay');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role !== 'doctor') return res.status(403).json({ message: 'User is not a doctor' });
+
+    res.status(200).json({
+      dayOfWeek: user.dayOfWeek,
+      startTimeInDay: user.startTimeInDay,
+      endTimeInDay: user.endTimeInDay,
+      startDay: user.startDay,
+      endDay: user.endDay,
+    });
+  } catch (error) {
+    console.error('Get work schedule error:', error);
+    res.status(500).json({ message: 'Server error while fetching work schedule' });
+  }
+};
+
+// Update lịch làm việc của doctor
+exports.updateWorkSchedule = async (req, res) => {
+  try {
+    const { dayOfWeek, startTimeInDay, endTimeInDay, startDay, endDay } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role !== 'doctor') return res.status(403).json({ message: 'User is not a doctor' });
+
+    user.dayOfWeek = dayOfWeek || user.dayOfWeek;
+    user.startTimeInDay = startTimeInDay || user.startTimeInDay;
+    user.endTimeInDay = endTimeInDay || user.endTimeInDay;
+    user.startDay = startDay || user.startDay;
+    user.endDay = endDay || user.endDay;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Work schedule updated successfully', schedule: {
+      dayOfWeek: user.dayOfWeek,
+      startTimeInDay: user.startTimeInDay,
+      endTimeInDay: user.endTimeInDay,
+      startDay: user.startDay,
+      endDay: user.endDay,
+    }});
+  } catch (error) {
+    console.error('Update work schedule error:', error);
+    res.status(500).json({ message: 'Server error while updating work schedule' });
+  }
+};
+
+// Xoá lịch làm việc của doctor
+exports.clearWorkSchedule = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role !== 'doctor') return res.status(403).json({ message: 'User is not a doctor' });
+
+    user.dayOfWeek = [];
+    user.startTimeInDay = undefined;
+    user.endTimeInDay = undefined;
+    user.startDay = undefined;
+    user.endDay = undefined;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Work schedule cleared successfully' });
+  } catch (error) {
+    console.error('Clear work schedule error:', error);
+    res.status(500).json({ message: 'Server error while clearing work schedule' });
+  }
+};

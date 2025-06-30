@@ -21,6 +21,19 @@ const UserSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     accessToken: { type: String, default: undefined },
     tokenExpiresAt: { type: Date, default: undefined },
+
+    // ======================
+    // Lịch làm việc
+    dayOfWeek: [{
+      type: String,
+      enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    }],
+    startTimeInDay: { type: String }, // ex: "08:00"
+    endTimeInDay: { type: String },   // ex: "17:00"
+    startDay: { type: Date },
+    endDay: { type: Date },
+    // ======================
+
   },
   {
     timestamps: true // Tự động tạo createdAt và updatedAt

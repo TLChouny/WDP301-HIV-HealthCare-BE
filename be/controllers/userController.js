@@ -381,37 +381,57 @@ exports.getWorkSchedule = async (req, res) => {
 };
 
 // Update lịch làm việc của doctor
+// Update lịch làm việc của doctor
 exports.updateWorkSchedule = async (req, res) => {
   try {
+    const { id } = req.params;
     const { dayOfWeek, startTimeInDay, endTimeInDay, startDay, endDay } = req.body;
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-    if (user.role !== 'doctor') return res.status(403).json({ message: 'User is not a doctor' });
 
-    user.dayOfWeek = dayOfWeek || user.dayOfWeek;
-    user.startTimeInDay = startTimeInDay || user.startTimeInDay;
-    user.endTimeInDay = endTimeInDay || user.endTimeInDay;
-    user.startDay = startDay || user.startDay;
-    user.endDay = endDay || user.endDay;
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (user.role !== 'doctor') {
+      return res.status(403).json({ message: "Chỉ có thể cập nhật lịch cho bác sĩ." });
+    }
+
+    const mapVNtoEN = (dayVN) => {
+      const mapping = {
+        "Thứ 2": "Monday",
+        "Thứ 3": "Tuesday",
+        "Thứ 4": "Wednesday",
+        "Thứ 5": "Thursday",
+        "Thứ 6": "Friday",
+        "Thứ 7": "Saturday",
+        "Chủ nhật": "Sunday",
+      };
+      return mapping[dayVN] || dayVN;
+    };
+
+    user.dayOfWeek = dayOfWeek.map(mapVNtoEN);
+    user.startTimeInDay = startTimeInDay;
+    user.endTimeInDay = endTimeInDay;
+    user.startDay = startDay ? new Date(startDay) : null;
+    user.endDay = endDay ? new Date(endDay) : null;
 
     await user.save();
 
-    res.status(200).json({ message: 'Work schedule updated successfully', schedule: {
-      dayOfWeek: user.dayOfWeek,
-      startTimeInDay: user.startTimeInDay,
-      endTimeInDay: user.endTimeInDay,
-      startDay: user.startDay,
-      endDay: user.endDay,
-    }});
+    res.json(user);
   } catch (error) {
-    console.error('Update work schedule error:', error);
-    res.status(500).json({ message: 'Server error while updating work schedule' });
+    console.error("Error updating work schedule:", error);
+    res.status(500).json({ message: "Server error while updating work schedule", error: error.message });
   }
 };
+
+
 
 // Xoá lịch làm việc của doctor
 exports.clearWorkSchedule = async (req, res) => {
   try {
+    const currentUser = req.user;
+    if (!currentUser || currentUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Chỉ admin mới có quyền xóa lịch làm việc' });
+    }
+
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (user.role !== 'doctor') return res.status(403).json({ message: 'User is not a doctor' });

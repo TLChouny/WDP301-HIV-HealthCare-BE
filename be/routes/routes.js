@@ -66,10 +66,10 @@ router.route('/users/resend-otp')
 // CRUD Work Schedule for doctor
 router.get('/users/:id/work-schedule', userController.getWorkSchedule);
 
-router.put('/users/:id/work-schedule', userController.updateWorkSchedule);
+router.put('/users/:id/work-schedule', auth, userController.updateWorkSchedule);
 
-router.delete('/users/:id/work-schedule', userController.clearWorkSchedule);
-  
+router.delete('/users/:id/work-schedule', auth, userController.clearWorkSchedule);
+
 // Service Routes
 router.route('/services')
   .post(auth, serviceController.create)

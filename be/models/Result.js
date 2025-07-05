@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 const ResultSchema = new Schema({
   resultName: { type: String, required: true },
   resultDescription: { type: String },
+  reExaminationDate: { type: Date, required: true },
   bookingId: { type: Schema.Types.ObjectId, ref: 'Booking', required: true },
   arvregimenId: { type: Schema.Types.ObjectId, ref: 'ARVRegimen', required: true },
   createdAt: { type: Date, default: Date.now },

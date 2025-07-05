@@ -19,7 +19,7 @@ const bookingSchema = new mongoose.Schema({
   currency: { type: String, default: "VND" },
   status: {
     type: String,
-    enum: ["cancel", "cancelled", "pending", "confirmed", "checked-in", "completed", "checked-out", "reviewed"],
+    enum: ["cancel", "cancelled", "pending", "confirmed", "checked-in", "completed", "re-examination", "checked-out", "reviewed"],
     default: "pending",
   },
   isAnonymous: { type: Boolean, default: false },

@@ -4,6 +4,7 @@ const NotificationSchema = new Schema({
   notiName: { type: String, required: true },
   notiDescription: { type: String },
   bookingId: { type: Schema.Types.ObjectId, ref: "Booking", required: true },
+  resultId: { type: Schema.Types.ObjectId, ref: "Result", required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 },

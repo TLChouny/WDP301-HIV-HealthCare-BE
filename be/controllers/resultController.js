@@ -10,7 +10,7 @@ exports.create = async (req, res) => {
     if (savedResult.bookingId) {
       await Booking.findByIdAndUpdate(
         savedResult.bookingId,
-        { status: 'completed' },
+        { status: 'completed' | 're-examination' }, // Cập nhật status tùy theo yêu cầu
         { new: true }
       );
     }

@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
+
 const ResultSchema = new Schema({
   resultName: { type: String, required: true },
   resultDescription: { type: String },

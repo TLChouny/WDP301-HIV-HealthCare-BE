@@ -125,6 +125,8 @@ router.route('/bookings/user/:userId')
 router.route('/results')
   .post(auth, resultController.create)
   .get(resultController.getAll);
+router.route('/results/user/:userId')
+  .get(auth, resultController.getAllByUserId); // Get results by UserID
 
 router.route('/results/:id')
   .get(resultController.getById)

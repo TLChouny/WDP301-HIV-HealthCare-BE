@@ -128,10 +128,14 @@ router.route('/results')
 router.route('/results/user/:userId')
   .get(auth, resultController.getAllByUserId); // Get results by UserID
 
+router.route('/results/doctor/:doctorName')
+  .get(auth, resultController.getAllByDoctorName); // Get results by DoctorName
+
 router.route('/results/:id')
   .get(resultController.getById)
   .put(auth, resultController.updateById)
   .delete(auth, resultController.deleteById);
+
 
 // Notification Routes
 router.route('/notifications')

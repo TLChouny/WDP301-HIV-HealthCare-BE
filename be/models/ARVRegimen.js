@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const ARVRregimenSchema = new Schema(
+const ARVRegimenSchema = new mongoose.Schema(
   {
     arvName: { type: String, required: true },
     arvDescription: { type: String },
@@ -13,4 +13,4 @@ const ARVRregimenSchema = new Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("ARVRregimen", ARVRregimenSchema);
+module.exports = mongoose.model("ARVRegimen", ARVRegimenSchema);

@@ -381,7 +381,6 @@ exports.getWorkSchedule = async (req, res) => {
 };
 
 // Update lịch làm việc của doctor
-// Update lịch làm việc của doctor
 exports.updateWorkSchedule = async (req, res) => {
   try {
     const { id } = req.params;
@@ -421,8 +420,6 @@ exports.updateWorkSchedule = async (req, res) => {
     res.status(500).json({ message: "Server error while updating work schedule", error: error.message });
   }
 };
-
-
 
 // Xoá lịch làm việc của doctor
 exports.clearWorkSchedule = async (req, res) => {

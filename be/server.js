@@ -12,7 +12,8 @@ connectDB();
 // Cấu hình CORS
 const allowedOrigins = [
   'http://localhost:5173', // Cho môi trường phát triển
-  'https://wdp-301-hiv-health-care-web.vercel.app' // Cho frontend trên Vercel
+  'https://wdp-301-hiv-health-care-web.vercel.app',
+  'https://wdp301-hiv-healthcare-web.onrender.com', // Thêm URL của ứng dụng web đã deploy
 ];
 
 app.use(cors({

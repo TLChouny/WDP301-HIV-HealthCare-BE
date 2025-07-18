@@ -97,10 +97,10 @@ exports.getAllByUserId = async (req, res) => {
     const results = await Result.find({ bookingId: { $in: bookingIds } })
       .populate({
         path: 'bookingId',
-        populate: {
-          path: 'serviceId',
-          model: 'Service'
-        }
+        populate: [
+          { path: 'serviceId', model: 'Service' },
+          { path: 'userId', model: 'User' } // Thêm dòng này để populate user
+        ]
       })
       .populate('arvregimenId')
       .exec();
@@ -183,10 +183,10 @@ exports.getAllByDoctorName = async (req, res) => {
     const results = await Result.find({ bookingId: { $in: bookingIds } })
       .populate({
         path: 'bookingId',
-        populate: {
-          path: 'serviceId',
-          model: 'Service'
-        }
+        populate: [
+          { path: 'serviceId', model: 'Service' },
+          { path: 'userId', model: 'User' } // Thêm dòng này để populate user
+        ]
       })
       .populate('arvregimenId')
       .exec();

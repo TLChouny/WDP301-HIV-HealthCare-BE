@@ -337,17 +337,46 @@ exports.getById = async (req, res) => {
 
 exports.updateById = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const currentUser = req.user; // middleware auth decode token gán req.user
+
+    // ✅ Nếu user không phải admin và muốn update user khác ➔ cấm
+    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+      return res.status(403).json({ message: 'You can only update your own account' });
+    }
+
+    // ✅ Nếu không phải admin ➔ filter field chỉ cho phép
+    if (currentUser.role !== 'admin') {
+      const allowedFields = ['userName', 'avatar', 'userDescription', 'gender', 'address', 'dateOfBirth', 'phone_number'];
+      Object.keys(updateData).forEach(field => {
+        if (!allowedFields.includes(field)) {
+          delete updateData[field];
+        }
+      });
+    }
+
+    // ✅ Nếu có password ➔ hash
+    if (updateData.password) {
+      const bcrypt = require('bcryptjs');
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+
+    const user = await User.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
-    }).select('-password -otp -resetOtp -accessToken');
+    }).select('-otp -resetOtp -accessToken');
+
     if (!user) return res.status(404).json({ message: 'User not found' });
+
     res.status(200).json(user);
   } catch (error) {
     console.error('Update user error:', error);
-    res.status(400).json({ message: 'Server error during user update' });
+    res.status(400).json({ message: error.message });
   }
 };
+
 
 exports.deleteById = async (req, res) => {
   try {

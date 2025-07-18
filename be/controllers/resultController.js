@@ -1,40 +1,67 @@
 const mongoose = require('mongoose');
 const Result = require('../models/Result');
 const Booking = require('../models/Booking');
-const ARVRegimen = require('../models/ARVRegimen'); // Nếu cần sử dụng ARVRegimen
-
+const ARVRegimen = require('../models/ARVRegimen');
+const Notification = require('../models/Notification');
 const ObjectId = mongoose.Types.ObjectId;
 
 exports.create = async (req, res) => {
   try {
-    // Convert bookingId to ObjectId nếu là string
-    if (req.body.bookingId && typeof req.body.bookingId === 'string') {
-      req.body.bookingId = new ObjectId(req.body.bookingId);
+    const {
+      resultName,
+      resultDescription,
+      reExaminationDate,
+      medicationTime,
+      bookingId,
+      arvregimenId
+    } = req.body;
+
+    // ⚠️ Validate required fields
+    if (!resultName || !reExaminationDate || !bookingId || !arvregimenId) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Convert arvregimenId to ObjectId nếu là string
-    if (req.body.arvregimenId && typeof req.body.arvregimenId === 'string') {
-      req.body.arvregimenId = new ObjectId(req.body.arvregimenId);
-    }
+    // 🔥 Convert IDs to ObjectId if needed
+    const convertedBookingId = typeof bookingId === 'string' ? new ObjectId(bookingId) : bookingId;
+    const convertedArvregimenId = typeof arvregimenId === 'string' ? new ObjectId(arvregimenId) : arvregimenId;
 
-    const result = new Result(req.body);
-    const savedResult = await result.save();
+    // 🔥 1. Tạo result mới
+    const newResult = new Result({
+      resultName,
+      resultDescription,
+      reExaminationDate,
+      medicationTime, // Thêm trường medicationTime
+      bookingId: convertedBookingId,
+      arvregimenId: convertedArvregimenId
+    });
 
-    // Cập nhật status của booking thành 'completed'
-    if (savedResult.bookingId) {
-      await Booking.findByIdAndUpdate(
-        savedResult.bookingId,
-        { status: 'completed' || 're-examination' }, // hoặc 're-examination' tuỳ logic
-        { new: true }
-      );
+    const savedResult = await newResult.save();
+
+    // 🔥 2. Cập nhật status của booking thành 'completed'
+    const booking = await Booking.findByIdAndUpdate(
+      convertedBookingId,
+      { status: 'completed' }, // tuỳ logic: 'completed' hoặc 're-examination'
+      { new: true }
+    );
+
+    // 🔥 3. Tạo notification nếu booking có userId
+    if (booking && booking.userId) {
+      await Notification.create({
+        notiName: 'Kết quả khám đã sẵn sàng',
+        notiDescription: `Kết quả "${resultName}" đã được cập nhật. Vui lòng kiểm tra hồ sơ.`,
+        userId: booking.userId,
+        bookingId: booking._id,
+        resultId: savedResult._id
+      });
     }
 
     res.status(201).json(savedResult);
   } catch (error) {
     console.error('Error creating result:', error);
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.getAll = async (req, res) => {
   try {
@@ -167,6 +194,53 @@ exports.getAllByDoctorName = async (req, res) => {
     res.status(200).json(results);
   } catch (error) {
     console.error('Error in getAllByDoctorName:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.createNotiResult = async (req, res) => {
+  try {
+    const {
+      resultName,
+      resultDescription,
+      reExaminationDate,
+      bookingId,
+      arvregimenId
+    } = req.body;
+
+    // ⚠️ Validate input
+    if (!resultName || !reExaminationDate || !bookingId || !arvregimenId) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // 🔥 1. Tạo result mới
+    const newResult = new Result({
+      resultName,
+      resultDescription,
+      reExaminationDate,
+      bookingId,
+      arvregimenId
+    });
+
+    const savedResult = await newResult.save();
+
+    // 🔥 2. Tìm booking để lấy userId
+    const booking = await Booking.findById(bookingId);
+
+    // 🔥 3. Tạo notification nếu booking có userId
+    if (booking && booking.userId) {
+      await Notification.create({
+        notiName: 'Kết quả khám đã sẵn sàng',
+        notiDescription: `Kết quả "${resultName}" đã được cập nhật. Vui lòng kiểm tra hồ sơ.`,
+        userId: booking.userId,
+        bookingId: booking._id,
+        resultId: savedResult._id
+      });
+    }
+
+    res.status(201).json(savedResult);
+  } catch (error) {
+    console.error('Error creating result:', error);
     res.status(500).json({ message: error.message });
   }
 };

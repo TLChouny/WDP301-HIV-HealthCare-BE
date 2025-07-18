@@ -16,6 +16,9 @@ const allowedOrigins = [
   'https://wdp301-hiv-healthcare-web.onrender.com', // Thêm URL của ứng dụng web đã deploy
 ];
 
+require('../be/cron/reExaminationReminder'); // Import cron job
+require('../be/cron/medicationReminder'); // Import cron job
+
 app.use(cors({
   origin: (origin, callback) => {
     // Cho phép yêu cầu không có origin (như từ Postman hoặc các công cụ không phải trình duyệt)

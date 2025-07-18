@@ -3,6 +3,7 @@ const Service = require('../models/Service');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 
+
 // Generate 6-digit random booking code
 const generateRandomSixDigitNumber = () => {
   return String(Math.floor(Math.random() * 900000) + 100000);

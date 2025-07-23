@@ -342,12 +342,12 @@ exports.updateById = async (req, res) => {
 
     const currentUser = req.user; // middleware auth decode token gán req.user
 
-    // ✅ Nếu user không phải admin và muốn update user khác ➔ cấm
+    // Nếu user không phải admin và muốn update user khác ➔ cấm
     if (currentUser.role !== 'admin' && currentUser.id !== id) {
       return res.status(403).json({ message: 'You can only update your own account' });
     }
 
-    // ✅ Nếu không phải admin ➔ filter field chỉ cho phép
+    // Nếu không phải admin ➔ filter field chỉ cho phép
     if (currentUser.role !== 'admin') {
       const allowedFields = ['userName', 'avatar', 'userDescription', 'gender', 'address', 'dateOfBirth', 'phone_number'];
       Object.keys(updateData).forEach(field => {
@@ -357,7 +357,7 @@ exports.updateById = async (req, res) => {
       });
     }
 
-    // ✅ Nếu có password ➔ hash
+    // Nếu có password ➔ hash
     if (updateData.password) {
       const bcrypt = require('bcryptjs');
       updateData.password = await bcrypt.hash(updateData.password, 10);
@@ -376,7 +376,6 @@ exports.updateById = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-
 
 exports.deleteById = async (req, res) => {
   try {
@@ -474,5 +473,336 @@ exports.clearWorkSchedule = async (req, res) => {
   } catch (error) {
     console.error('Clear work schedule error:', error);
     res.status(500).json({ message: 'Server error while clearing work schedule' });
+  }
+};
+
+exports.addCertification = async (req, res) => {
+  try {
+    const { id } = req.params; // userId
+    const currentUser = req.user; // middleware auth decode
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+      return res.status(403).json({ message: 'You can only add certification for yourself' });
+    }
+
+    if (user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctor can have certifications' });
+    }
+
+    const { title, issuer, issueDate, expiryDate, description, fileUrl } = req.body;
+
+    const cert = {
+      title,
+      issuer,
+      issueDate,
+      expiryDate,
+      description,
+      fileUrl,
+      verified: false // khi doctor thêm sẽ mặc định false
+    };
+
+    user.certifications.push(cert);
+    await user.save();
+
+    res.status(200).json({ message: 'Certification added successfully, waiting for admin approval', certifications: user.certifications });
+  } catch (error) {
+    console.error('Add certification error:', error);
+    res.status(500).json({ message: 'Server error while adding certification' });
+  }
+};
+
+exports.updateCertification = async (req, res) => {
+  try {
+    const { id, certId } = req.params; // userId, certificationId
+    const currentUser = req.user;
+
+    const user = await User.findById(id);
+     if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+      return res.status(403).json({ message: 'You can only update experience for yourself' });
+    }
+
+    if (user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctor can have experiences' });
+    }
+    const cert = user.certifications.id(certId);
+    if (!cert) return res.status(404).json({ message: 'Certification not found' });
+
+    if (cert.verified && currentUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Cannot update verified experience unless you are an admin' });
+    }
+
+    // Update fields
+    const { title, issuer, issueDate, expiryDate, description, fileUrl } = req.body;
+    cert.title = title || cert.title;
+    cert.issuer = issuer || cert.issuer;
+    cert.issueDate = issueDate || cert.issueDate;
+    cert.expiryDate = expiryDate || cert.expiryDate;
+    cert.description = description || cert.description;
+    cert.fileUrl = fileUrl || cert.fileUrl;
+
+    await user.save();
+    res.status(200).json({ message: 'Certification updated successfully', certifications: user.certifications });
+  } catch (error) {
+    console.error('Update certification error:', error);
+    res.status(500).json({ message: 'Server error while updating certification' });
+  }
+};
+
+exports.deleteCertification = async (req, res) => {
+  try {
+    const { id, certId } = req.params;
+    const currentUser = req.user;
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+      return res.status(403).json({ message: 'You can only delete certification for yourself' });
+    }
+
+    if (user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctor can have certifications' });
+    }
+
+    const certExists = user.certifications.id(certId);
+    if (!certExists) return res.status(404).json({ message: 'Certification not found' });
+
+    // Use .pull() for safe deletion
+    user.certifications.pull({ _id: certId });
+    await user.save();
+
+    res.status(200).json({
+      message: 'Certification deleted successfully',
+      certifications: user.certifications
+    });
+  } catch (error) {
+    console.error('Delete certification error:', error);
+    res.status(500).json({ message: 'Server error while deleting certification' });
+  }
+};
+
+
+exports.approveCertification = async (req, res) => {
+  try {
+    const { id, certId } = req.params;
+    const currentUser = req.user;
+
+    // chỉ admin được duyệt
+    if (currentUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin can approve certifications' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const cert = user.certifications.id(certId);
+    if (!cert) return res.status(404).json({ message: 'Certification not found' });
+    cert.status = 'approved';
+
+    cert.verified = true;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Certification approved successfully', certifications: user.certifications });
+  } catch (error) {
+    console.error('Approve certification error:', error);
+    res.status(500).json({ message: 'Server error while approving certification' });
+  }
+};
+
+exports.rejectCertification = async (req, res) => {
+  try {
+    const { id, certId } = req.params;
+    const currentUser = req.user;
+
+    if (currentUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin can reject certifications' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const certExists = user.certifications.id(certId);
+    if (!certExists) return res.status(404).json({ message: 'Certification not found' });
+
+    // Xoá trực tiếp
+    user.certifications.pull({ _id: certId });
+    await user.save();
+
+    res.status(200).json({
+      message: 'Certification rejected and deleted successfully',
+      certifications: user.certifications
+    });
+  } catch (error) {
+    console.error('Reject certification error:', error);
+    res.status(500).json({ message: 'Server error while rejecting certification' });
+  }
+};
+
+
+exports.addExperience = async (req, res) => {
+  try {
+    const { id } = req.params; // userId
+    const currentUser = req.user; // auth decode
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // chỉ admin hoặc doctor đó mới thêm được
+    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+      return res.status(403).json({ message: 'You can only add experience for yourself' });
+    }
+
+    if (user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctor can have experiences' });
+    }
+
+    const { position, hospital, startDate, endDate, description } = req.body;
+
+    const exp = {
+      position,
+      hospital,
+      startDate,
+      endDate,
+      description,
+      verified: false // khi doctor thêm sẽ mặc định false
+    };
+    user.experiences.push(exp);
+    await user.save();
+
+    res.status(200).json({ message: 'Experience added successfully, waiting for admin approval', experiences: user.experiences });
+  } catch (error) {
+    console.error('Add experience error:', error);
+    res.status(500).json({ message: 'Server error while adding experience' });
+  }
+};
+
+exports.updateExperience = async (req, res) => {
+  try {
+    const { id, expId } = req.params; // userId, experienceId
+    const currentUser = req.user;
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+      return res.status(403).json({ message: 'You can only update experience for yourself' });
+    }
+
+    if (user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctor can have experiences' });
+    }
+    const exp = user.experiences.id(expId);
+    if (!exp) return res.status(404).json({ message: 'Experience not found' });
+
+    if (exp.verified && currentUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Cannot update verified experience unless you are an admin' });
+    }
+
+    const { position, hospital, startDate, endDate, description } = req.body;
+    exp.position = position || exp.position;
+    exp.hospital = hospital || exp.hospital;
+    exp.startDate = startDate || exp.startDate;
+    exp.endDate = endDate || exp.endDate;
+    exp.description = description || exp.description;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Experience updated successfully', experiences: user.experiences });
+  } catch (error) {
+    console.error('Update experience error:', error);
+    res.status(500).json({ message: 'Server error while updating experience' });
+  }
+};
+
+exports.deleteExperience = async (req, res) => {
+  try {
+    const { id, expId } = req.params;
+    const currentUser = req.user;
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (currentUser.role !== 'admin' && currentUser.id !== id) {
+      return res.status(403).json({ message: 'You can only delete experience for yourself' });
+    }
+
+    if (user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Only doctor can have experiences' });
+    }
+
+    const expExists = user.experiences.id(expId);
+    if (!expExists) return res.status(404).json({ message: 'Experience not found' });
+
+    user.experiences.pull({ _id: expId });
+    await user.save();
+
+    res.status(200).json({ message: 'Experience deleted successfully', experiences: user.experiences });
+  } catch (error) {
+    console.error('Delete experience error:', error);
+    res.status(500).json({ message: 'Server error while deleting experience' });
+  }
+};
+
+
+exports.approveExperience = async (req, res) => {
+  try {
+    const { id, expId } = req.params;
+    const currentUser = req.user;
+
+    // chỉ admin được duyệt
+    if (currentUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin can approve experiences' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const exp = user.experiences.id(expId);
+    if (!exp) return res.status(404).json({ message: 'Experience not found' });
+    exp.status = 'approved';
+
+    exp.verified = true;
+
+    await user.save();
+
+    res.status(200).json({ message: 'Experience approved successfully', experiences: user.experiences });
+  } catch (error) {
+    console.error('Approve experience error:', error);
+    res.status(500).json({ message: 'Server error while approving experience' });
+  }
+};
+
+exports.rejectExperience = async (req, res) => {
+  try {
+    const { id, expId } = req.params;
+    const currentUser = req.user;
+
+    if (currentUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin can reject experiences' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const expExists = user.experiences.id(expId);
+    if (!expExists) return res.status(404).json({ message: 'Experience not found' });
+
+    // Xoá trực tiếp
+    user.experiences.pull({ _id: expId });
+    await user.save();
+
+    res.status(200).json({
+      message: 'Experience rejected and deleted successfully',
+      experiences: user.experiences
+    });
+  } catch (error) {
+    console.error('Reject experience error:', error);
+    res.status(500).json({ message: 'Server error while rejecting experience' });
   }
 };

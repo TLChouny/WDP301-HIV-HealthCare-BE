@@ -14,6 +14,25 @@ const UserSchema = new mongoose.Schema(
     role: { type: String, enum: ['user', 'admin', 'doctor', 'staff'], default: 'user' },
     avatar: { type: String },
     userDescription: { type: String },
+    certifications: [{
+      title: { type: String, required: true },
+      issuer: { type: String },
+      issueDate: { type: Date },
+      expiryDate: { type: Date },
+      description: { type: String },
+      fileUrl: { type: String },
+      status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending'},
+      verified: { type: Boolean, default: false }
+    }],
+    experiences: [{
+      position: { type: String, required: true },
+      hospital: { type: String, required: true },
+      startDate: { type: Date },
+      endDate: { type: Date },
+      description: { type: String },
+      status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending'},
+      verified: { type: Boolean, default: false }
+    }],
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
     otp: { type: String },
     otpExpires: { type: Date },

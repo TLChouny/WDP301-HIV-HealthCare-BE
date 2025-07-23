@@ -70,6 +70,18 @@ router.put('/users/:id/work-schedule', auth, userController.updateWorkSchedule);
 
 router.delete('/users/:id/work-schedule', auth, userController.clearWorkSchedule);
 
+//CRUD Certification for doctor
+router.post('/:id/certifications', auth, userController.addCertification);
+router.put('/:id/certifications/:certId', auth, userController.updateCertification);
+router.delete('/:id/certifications/:certId', auth, userController.deleteCertification);
+router.put('/:id/certifications/:certId/approve', auth, userController.approveCertification);
+router.delete('/:id/certifications/:certId/reject', auth, userController.rejectCertification);
+router.post('/:id/experiences', auth, userController.addExperience);
+router.put('/:id/experiences/:expId', auth, userController.updateExperience);
+router.delete('/:id/experiences/:expId', auth, userController.deleteExperience);
+router.put('/:id/experiences/:expId/approve', auth, userController.approveExperience);
+router.delete('/:id/experiences/:expId/reject', auth, userController.rejectExperience);
+
 // Service Routes
 router.route('/services')
   .post(auth, serviceController.create)

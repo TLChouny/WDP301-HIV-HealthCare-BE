@@ -1,49 +1,114 @@
-const  ARVRregimen  = require('../models/ARVRegimen');
+const ARVRegimen = require('../models/ARVRegimen');
+const mongoose = require('mongoose');
 
+// ✅ Create ARVRegimen
 exports.create = async (req, res) => {
   try {
-    const arvrregimen = new ARVRregimen(req.body);
-    const savedARVRregimen = await arvrregimen.save();
-    res.status(201).json(savedARVRregimen);
+    const {
+      arvName,
+      arvDescription,
+      regimenCode,
+      treatmentLine,
+      recommendedFor,
+      drugs,
+      dosages,
+      frequency,
+      contraindications,
+      sideEffects,
+    } = req.body;
+
+    const userId = req.user._id; // req.user từ middleware auth
+
+    const newARVRegimen = new ARVRegimen({
+      arvName,
+      arvDescription,
+      regimenCode,
+      treatmentLine,
+      recommendedFor,
+      drugs,
+      dosages,
+      frequency,
+      contraindications,
+      sideEffects,
+      userId: userId || null,
+    });
+
+    const savedARVRegimen = await newARVRegimen.save();
+    res.status(201).json(savedARVRegimen);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
+
+// ✅ Get All ARVRegimens
 exports.getAll = async (req, res) => {
   try {
-    const arvrregimens = await ARVRregimen.find();
+    const arvrregimens = await ARVRegimen.find();
     res.status(200).json(arvrregimens);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// ✅ Get ARVRegimen by ID
 exports.getById = async (req, res) => {
   try {
-    const arvrregimen = await ARVRregimen.findById(req.params.id);
-    if (!arvrregimen) return res.status(404).json({ message: 'ARVRregimen not found' });
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid ARVRegimen ID' });
+    }
+
+    const arvrregimen = await ARVRegimen.findById(id);
+    if (!arvrregimen) {
+      return res.status(404).json({ message: 'ARVRegimen not found' });
+    }
     res.status(200).json(arvrregimen);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// ✅ Update ARVRegimen by ID
 exports.updateById = async (req, res) => {
   try {
-    const arvrregimen = await ARVRregimen.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!arvrregimen) return res.status(404).json({ message: 'ARVRregimen not found' });
-    res.status(200).json(arvrregimen);
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid ARVRegimen ID' });
+    }
+
+    const updatedARVRegimen = await ARVRegimen.findByIdAndUpdate(id, req.body, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updatedARVRegimen) {
+      return res.status(404).json({ message: 'ARVRegimen not found' });
+    }
+
+    res.status(200).json(updatedARVRegimen);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
+// ✅ Delete ARVRegimen by ID
 exports.deleteById = async (req, res) => {
   try {
-    const arvrregimen = await ARVRregimen.findByIdAndDelete(req.params.id);
-    if (!arvrregimen) return res.status(404).json({ message: 'ARVRregimen not found' });
-    res.status(200).json({ message: 'ARVRregimen deleted successfully' });
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid ARVRegimen ID' });
+    }
+
+    const deletedARVRegimen = await ARVRegimen.findByIdAndDelete(id);
+    if (!deletedARVRegimen) {
+      return res.status(404).json({ message: 'ARVRegimen not found' });
+    }
+
+    res.status(200).json({ message: 'ARVRegimen deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

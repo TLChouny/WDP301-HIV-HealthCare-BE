@@ -8,6 +8,8 @@ const ServiceSchema = new mongoose.Schema({
   serviceImage: { type: String },
   duration: { type: Number, default: 30 }, // ⏱ fallback nếu FE không truyền
   price: { type: Number, required: true }, // 💰 kiểu số để dễ xử lý
+  isLabTest: { type: Boolean, default: false },
+  isArvTest: { type: Boolean, default: false }
 }, { timestamps: true }); // ✅ Bật createdAt, updatedAt
 
 module.exports = mongoose.model("Service", ServiceSchema);

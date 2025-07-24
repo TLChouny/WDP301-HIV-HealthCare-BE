@@ -5,46 +5,79 @@ const ARVRegimen = require('../models/ARVRegimen');
 const Notification = require('../models/Notification');
 const ObjectId = mongoose.Types.ObjectId;
 
+/**
+ * CREATE RESULT + UPDATE BOOKING + CREATE NOTIFICATION
+ */
 exports.create = async (req, res) => {
   try {
     const {
       resultName,
       resultDescription,
+      symptoms,
+      weight,
+      height,
+      bmi,
+      bloodPressure,
+      pulse,
+      temperature,
+      sampleType,
+      testMethod,
+      resultType,
+      testResult,
+      testValue,
+      unit,
+      referenceRange,
       reExaminationDate,
       medicationTime,
+      medicationSlot,
       bookingId,
       arvregimenId
     } = req.body;
 
     // ⚠️ Validate required fields
-    if (!resultName || !reExaminationDate || !bookingId || !arvregimenId) {
-      return res.status(400).json({ message: "Missing required fields" });
+    if (!resultName || !bookingId) {
+      return res.status(400).json({ message: "Missing required fields: resultName, bookingId" });
     }
 
     // 🔥 Convert IDs to ObjectId if needed
-    const convertedBookingId = typeof bookingId === 'string' ? new ObjectId(bookingId) : bookingId;
-    const convertedArvregimenId = typeof arvregimenId === 'string' ? new ObjectId(arvregimenId) : arvregimenId;
+    const convertedBookingId = typeof bookingId === 'string' ? new mongoose.Types.ObjectId(bookingId) : bookingId;
+    const convertedArvregimenId = arvregimenId && typeof arvregimenId === 'string' ? new mongoose.Types.ObjectId(arvregimenId) : arvregimenId;
 
-    // 🔥 1. Tạo result mới
+    // 🔥 Create new result
     const newResult = new Result({
       resultName,
       resultDescription,
+      symptoms,
+      weight,
+      height,
+      bmi,
+      bloodPressure,
+      pulse,
+      temperature,
+      sampleType,
+      testMethod,
+      resultType,
+      testResult,
+      testValue,
+      unit,
+      referenceRange,
       reExaminationDate,
-      medicationTime, // Thêm trường medicationTime
+      medicationTime,
+      medicationSlot,
       bookingId: convertedBookingId,
       arvregimenId: convertedArvregimenId
     });
 
     const savedResult = await newResult.save();
 
-    // 🔥 2. Cập nhật status của booking thành 'completed'
+    // 🔥 Update booking status to 'completed'
     const booking = await Booking.findByIdAndUpdate(
       convertedBookingId,
-      { status: 'completed' }, // tuỳ logic: 'completed' hoặc 're-examination'
+      { status: 'completed' },
       { new: true }
     );
 
-    // 🔥 3. Tạo notification nếu booking có userId
+    // 🔥 Create notification if booking has userId
     if (booking && booking.userId) {
       await Notification.create({
         notiName: 'Kết quả khám đã sẵn sàng',
@@ -63,10 +96,19 @@ exports.create = async (req, res) => {
 };
 
 
+/**
+ * GET ALL RESULTS
+ */
 exports.getAll = async (req, res) => {
   try {
     const results = await Result.find()
-      .populate('bookingId')
+      .populate({
+        path: 'bookingId',
+        populate: [
+          { path: 'serviceId', model: 'Service' },
+          { path: 'userId', model: 'User' }
+        ]
+      })
       .populate('arvregimenId')
       .exec();
 
@@ -77,6 +119,9 @@ exports.getAll = async (req, res) => {
   }
 };
 
+/**
+ * GET ALL RESULTS BY USER ID
+ */
 exports.getAllByUserId = async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -84,22 +129,19 @@ exports.getAllByUserId = async (req, res) => {
       return res.status(400).json({ message: 'userId is required' });
     }
 
-    // 🔥 Step 1: Find all bookings by userId
     const bookings = await Booking.find({ userId: userId }).select('_id');
     const bookingIds = bookings.map(b => b._id);
 
     if (bookingIds.length === 0) {
-      // ✅ Không có booking → trả array rỗng
       return res.status(200).json([]);
     }
 
-    // 🔥 Step 2: Find results with bookingId in user's bookings
     const results = await Result.find({ bookingId: { $in: bookingIds } })
       .populate({
         path: 'bookingId',
         populate: [
           { path: 'serviceId', model: 'Service' },
-          { path: 'userId', model: 'User' } // Thêm dòng này để populate user
+          { path: 'userId', model: 'User' }
         ]
       })
       .populate('arvregimenId')
@@ -112,15 +154,18 @@ exports.getAllByUserId = async (req, res) => {
   }
 };
 
+/**
+ * GET RESULT BY ID
+ */
 exports.getById = async (req, res) => {
   try {
     const result = await Result.findById(req.params.id)
       .populate({
         path: 'bookingId',
-        populate: {
-          path: 'serviceId',
-          model: 'Service'
-        }
+        populate: [
+          { path: 'serviceId', model: 'Service' },
+          { path: 'userId', model: 'User' }
+        ]
       })
       .populate('arvregimenId')
       .exec();
@@ -134,6 +179,9 @@ exports.getById = async (req, res) => {
   }
 };
 
+/**
+ * UPDATE RESULT BY ID
+ */
 exports.updateById = async (req, res) => {
   try {
     const result = await Result.findByIdAndUpdate(
@@ -151,6 +199,9 @@ exports.updateById = async (req, res) => {
   }
 };
 
+/**
+ * DELETE RESULT BY ID
+ */
 exports.deleteById = async (req, res) => {
   try {
     const result = await Result.findByIdAndDelete(req.params.id);
@@ -163,6 +214,9 @@ exports.deleteById = async (req, res) => {
   }
 };
 
+/**
+ * GET ALL RESULTS BY DOCTOR NAME
+ */
 exports.getAllByDoctorName = async (req, res) => {
   try {
     const doctorName = req.params.doctorName;
@@ -170,22 +224,19 @@ exports.getAllByDoctorName = async (req, res) => {
       return res.status(400).json({ message: 'doctorName is required' });
     }
 
-    // 🔥 Step 1: Find all bookings with this doctorName
     const bookings = await Booking.find({ doctorName: doctorName }).select('_id');
     const bookingIds = bookings.map(b => b._id);
 
     if (bookingIds.length === 0) {
-      // ✅ Không có booking → trả array rỗng
       return res.status(200).json([]);
     }
 
-    // 🔥 Step 2: Find results with bookingId in these bookings
     const results = await Result.find({ bookingId: { $in: bookingIds } })
       .populate({
         path: 'bookingId',
         populate: [
           { path: 'serviceId', model: 'Service' },
-          { path: 'userId', model: 'User' } // Thêm dòng này để populate user
+          { path: 'userId', model: 'User' }
         ]
       })
       .populate('arvregimenId')
@@ -197,51 +248,3 @@ exports.getAllByDoctorName = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-exports.createNotiResult = async (req, res) => {
-  try {
-    const {
-      resultName,
-      resultDescription,
-      reExaminationDate,
-      bookingId,
-      arvregimenId
-    } = req.body;
-
-    // ⚠️ Validate input
-    if (!resultName || !reExaminationDate || !bookingId || !arvregimenId) {
-      return res.status(400).json({ message: "Missing required fields" });
-    }
-
-    // 🔥 1. Tạo result mới
-    const newResult = new Result({
-      resultName,
-      resultDescription,
-      reExaminationDate,
-      bookingId,
-      arvregimenId
-    });
-
-    const savedResult = await newResult.save();
-
-    // 🔥 2. Tìm booking để lấy userId
-    const booking = await Booking.findById(bookingId);
-
-    // 🔥 3. Tạo notification nếu booking có userId
-    if (booking && booking.userId) {
-      await Notification.create({
-        notiName: 'Kết quả khám đã sẵn sàng',
-        notiDescription: `Kết quả "${resultName}" đã được cập nhật. Vui lòng kiểm tra hồ sơ.`,
-        userId: booking.userId,
-        bookingId: booking._id,
-        resultId: savedResult._id
-      });
-    }
-
-    res.status(201).json(savedResult);
-  } catch (error) {
-    console.error('Error creating result:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-

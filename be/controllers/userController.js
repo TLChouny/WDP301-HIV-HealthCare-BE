@@ -377,6 +377,31 @@ exports.updateById = async (req, res) => {
   }
 };
 
+exports.updateAvatar = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const avatarUrl = req.file
+      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+      : req.body.avatar; // support cả URL truyền tay
+
+    if (!avatarUrl) {
+      return res.status(400).json({ message: "Thiếu ảnh avatar" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { avatar: avatarUrl },
+      { new: true }
+    );
+
+    res.status(200).json({ avatar: updatedUser.avatar });
+  } catch (error) {
+    console.error("Lỗi cập nhật avatar:", error);
+    res.status(500).json({ message: "Lỗi server khi cập nhật avatar" });
+  }
+};
+
+
 exports.deleteById = async (req, res) => {
   try {
     const user = await User.findByIdAndDelete(req.params.id);

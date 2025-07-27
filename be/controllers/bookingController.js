@@ -1,21 +1,79 @@
-const Booking = require('../models/Booking');
-const Service = require('../models/Service');
+const Booking = require('../models/Booking'); // Điều chỉnh lại path đúng theo dự án của bạn
+const Service = require('../models/Service'); // Đảm bảo model này tồn tại
 const Notification = require('../models/Notification');
-const User = require('../models/User');
-
-
+const mongoose = require('mongoose');
 // Generate 6-digit random booking code
 const generateRandomSixDigitNumber = () => {
   return String(Math.floor(Math.random() * 900000) + 100000);
 };
 
-// Calculate end time based on start time + duration
+// Tính thời gian kết thúc dựa vào startTime và duration (phút)
 const calculateEndTime = (startTime, duration) => {
   const [hour, minute] = startTime.split(':').map(Number);
-  const total = hour * 60 + minute + duration;
-  const endHour = Math.floor(total / 60) % 24; // prevent 24:xx
-  const endMinute = total % 60;
-  return `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
+  const date = new Date();
+  date.setHours(hour, minute, 0, 0);
+  date.setMinutes(date.getMinutes() + duration);
+  return date.toTimeString().slice(0, 5); // Format: HH:mm
+};
+
+// Tạo danh sách slot theo khoảng thời gian
+const generateTimeSlotsInRange = (startTime, endTime, interval = 30) => {
+  const slots = [];
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const [endHour, endMinute] = endTime.split(':').map(Number);
+
+  let currentTime = new Date();
+  currentTime.setHours(startHour, startMinute, 0, 0);
+
+  const endTimeDate = new Date();
+  endTimeDate.setHours(endHour, endMinute, 0, 0);
+
+  while (currentTime < endTimeDate) {
+    slots.push(
+      `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`
+    );
+    currentTime.setMinutes(currentTime.getMinutes() + interval);
+  }
+
+  return slots;
+};
+
+// 📌 API kiểm tra các khung giờ đã được đặt của bác sĩ trong ngày
+exports.checkExistingBookings = async (req, res) => {
+  try {
+    const { doctorName, bookingDate } = req.query;
+
+    if (!doctorName || !bookingDate) {
+      return res.status(400).json({ message: 'Missing doctorName or bookingDate parameter' });
+    }
+
+    console.log('🔍 Received query:', { doctorName, bookingDate });
+
+    const bookings = await Booking.find({ doctorName, bookingDate }).populate('serviceId');
+    console.log('📦 Found bookings:', bookings.length);
+
+    const bookedSlots = new Set();
+
+    for (const booking of bookings) {
+      let endTime = booking.endTime;
+
+      // Nếu không có endTime, tự tính từ startTime + service.duration
+      if (!endTime && booking.serviceId && booking.serviceId.duration) {
+        endTime = calculateEndTime(booking.startTime, booking.serviceId.duration);
+      }
+
+      if (endTime) {
+        const slots = generateTimeSlotsInRange(booking.startTime, endTime);
+        slots.forEach((slot) => bookedSlots.add(slot));
+      }
+    }
+
+    console.log('⏱️ Booked slots:', [...bookedSlots]);
+    res.status(200).json([...bookedSlots]);
+  } catch (error) {
+    console.error('❌ Error in checkExistingBookings:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
 // 📌 Tạo booking mới
@@ -28,15 +86,15 @@ exports.create = async (req, res) => {
       bookingDate,
       startTime,
       endTime,
-      fullName,
-      phone,
-      email,
+      customerName,
+      customerPhone,
+      customerEmail,
       notes,
       isAnonymous,
       status
     } = req.body;
 
-    if (!serviceId || !bookingDate || !startTime || (!isAnonymous && (!fullName || !phone))) {
+    if (!serviceId || !bookingDate || !startTime || (!isAnonymous && (!customerName || !customerPhone || !customerEmail))) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -77,9 +135,9 @@ exports.create = async (req, res) => {
       startTime,
       endTime: realEndTime,
       doctorName: doctorName || null,
-      customerName: isAnonymous ? undefined : fullName,
-      customerPhone: isAnonymous ? undefined : phone,
-      customerEmail: isAnonymous ? undefined : email,
+      customerName: isAnonymous ? undefined : customerName,
+      customerPhone: isAnonymous ? undefined : customerPhone,
+      customerEmail: isAnonymous ? undefined : customerEmail,
       notes,
       isAnonymous: !!isAnonymous,
       status: status || "pending",
@@ -89,14 +147,20 @@ exports.create = async (req, res) => {
     const savedBooking = await newBooking.save();
 
     // Tạo notification tự động
-    await Notification.create({
-      notiName: 'Đặt lịch thành công',
-      notiDescription: 'Bạn đã đặt lịch thành công!',
-      bookingId: savedBooking._id
-    });
+    if (savedBooking._id) {
+      await Notification.create({
+        notiName: 'Đặt lịch thành công',
+        notiDescription: 'Bạn đã đặt lịch thành công!',
+        bookingId: savedBooking._id,
+        userId: userId || null, // Gán userId nếu có
+      }).catch(err => {
+        console.error('❌ Error creating notification:', err);
+      });
+    }
 
     res.status(201).json(savedBooking);
   } catch (error) {
+    console.error('❌ Error in create booking:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -189,41 +253,59 @@ exports.getById = async (req, res) => {
 // 📌 Update booking
 exports.updateById = async (req, res) => {
   try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid booking ID' });
+    }
+
+    const urlRegex = /^(https?:\/\/)?([\w-]+(\.[\w-]+)+)([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?$/;
+    if (req.body.meetLink && !urlRegex.test(req.body.meetLink)) {
+      return res.status(400).json({ message: 'Invalid meetLink URL' });
+    }
+
     const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
+      id,
       req.body,
       { new: true, runValidators: true }
     );
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-    // Nếu cập nhật meetLink, gửi notification cho user và doctor
+    // Gửi notification nếu có meetLink
     if (req.body.meetLink) {
-      // Gửi cho user
-      if (booking.userId) {
-        await Notification.create({
-          notiName: 'Link tư vấn đã sẵn sàng',
-          notiDescription: `Link Google Meet: ${req.body.meetLink}`,
-          userId: booking.userId,
-          bookingId: booking._id
-        });
-      }
-      // Gửi cho doctor (nếu doctorName là tên user)
-      if (booking.doctorName) {
-        const doctorUser = await User.findOne({ fullName: booking.doctorName });
-        if (doctorUser) {
+      try {
+        if (booking.userId) {
           await Notification.create({
-            notiName: 'Lịch tư vấn mới',
-            notiDescription: `Bạn có lịch tư vấn với link: ${req.body.meetLink}`,
-            userId: doctorUser._id,
+            notiName: 'Link tư vấn đã sẵn sàng',
+            notiDescription: `Link Google Meet: ${req.body.meetLink}`,
+            userId: booking.userId,
             bookingId: booking._id
           });
         }
+        if (booking.doctorName) {
+          const doctorUser = await User.findOne({ doctorName: booking.doctorName });
+          if (doctorUser) {
+            await Notification.create({
+              notiName: 'Lịch tư vấn mới',
+              notiDescription: `Bạn có lịch tư vấn với link: ${req.body.meetLink}`,
+              userId: doctorUser._id,
+              bookingId: booking._id
+            });
+          } else {
+            console.warn(`Doctor with name ${booking.doctorName} not found`);
+          }
+        }
+      } catch (notiError) {
+        console.error('Notification creation failed:', notiError.message);
       }
     }
 
     res.status(200).json(booking);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Update booking error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation error', details: error.errors });
+    }
+    res.status(400).json({ message: error.message || 'Internal server error' });
   }
 };
 

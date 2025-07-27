@@ -36,6 +36,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api', routes);
+app.use('/uploads', express.static('uploads'));
 
 // Start server
 const PORT = process.env.PORT || 5000;

@@ -11,6 +11,8 @@ const notificationController = require('../controllers/notificationController');
 const reviewController = require('../controllers/reviewController');
 const paymentController = require('../controllers/paymentController');
 const webhookController = require('../controllers/webhookCotroller');
+
+const upload = require('../middleware/upload');
 const auth = require('../middleware/auth');
 
 // Category Routes
@@ -43,6 +45,12 @@ router.route('/users/:id')
   .put(auth, userController.updateById)
   .delete(auth, userController.deleteById);
 
+router.put(
+  '/users/:id/avatar',
+  upload.single('avatar'),
+  userController.updateAvatar
+);
+
 router.route('/users/login')
   .post(userController.login); // Public login
 router.route('/users/logout')
@@ -56,7 +64,7 @@ router.route('/users/reset-password')
 
 router.route('/users/verify-reset-otp')
   .post(userController.verifyResetOTP); // Public token verification 
-  
+
 router.route('/users/verify-otp')
   .post(userController.verifyOTP); // Public OTP verification
 
@@ -94,7 +102,7 @@ router.route('/services/:id')
 
 router.route('/services/category/:categoryId')
   .get(serviceController.getByCategoryId); // Get services by category
-    
+
 // ARVRregimen Routes
 router.route('/arvrregimens')
   .post(auth, arvrregimenController.create)
@@ -106,6 +114,10 @@ router.route('/arvrregimens/:id')
   .delete(auth, arvrregimenController.deleteById);
 
 // Booking Routes
+// Thêm route mới để kiểm tra khung giờ đã được đặt
+router.route('/bookings/check')
+  .get(bookingController.checkExistingBookings);
+
 router.route('/bookings')
   .post(auth, bookingController.create)
   .get(bookingController.getAll);

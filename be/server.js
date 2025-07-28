@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
 const routes = require('./routes/routes');
+const SmsLog = require('./models/SmsLog');
 
 const app = express();
 
@@ -18,6 +19,7 @@ const allowedOrigins = [
 
 require('../be/cron/reExaminationReminder'); // Import cron job
 require('../be/cron/medicationReminder'); // Import cron job
+require('../be/cron/reminder.job');
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -33,6 +35,29 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.post('/webhook/sms-status', async (req, res) => {
+  const { messageId, to, status } = req.body;
+    await SmsLog.create({ messageId, to, status });
+  try {
+    await SmsLog.create({ messageId, to, status });
+    console.log('📩 DLR saved:', messageId, status);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('❌ Failed to save DLR:', err);
+    res.sendStatus(500);
+  }
+});
+
+app.get('/api/sms-logs', async (req, res) => {
+  const logs = await SmsLog.find().sort({ timestamp: -1 }).limit(50);
+  res.json(logs);
+});
+
+app.get('/webhook/sms-status', (req, res) => {
+  res.send('✅ Webhook is live!');
+});
 
 // Routes
 app.use('/api', routes);

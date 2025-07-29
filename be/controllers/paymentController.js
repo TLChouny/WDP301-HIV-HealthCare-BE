@@ -167,7 +167,7 @@ const updatePaymentStatus = async (req, res) => {
 };
 const getAllPayments = async (req, res) => {
   try {
-    const payments = await Payment.findOne().populate("bookingIds").sort({ createdAt: -1 });
+    const payments = await Payment.find().populate("bookingIds").sort({ createdAt: -1 });
     return res.json({ error: 0, data: payments });
   } catch (error) {
     console.error("❌ Error fetching all payments:", error.message || error);

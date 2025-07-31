@@ -27,7 +27,7 @@ const ResultSchema = new Schema({
   reExaminationDate: { type: Date }, // Ngày tái khám
   medicationTime: { type: String }, // Thời gian uống thuốc
   medicationSlot: { type: String }, // Buổi uống thuốc
-  arvregimenId: { type: Schema.Types.ObjectId, ref: 'ARVRegimen' },
+  arvregimenId: { type: Schema.Types.ObjectId, ref: 'ARVRegimen', required: false },
 
   // 🔗 Liên kết Booking
   bookingId: { type: Schema.Types.ObjectId, ref: 'Booking', required: true },

@@ -363,6 +363,9 @@ exports.updateById = async (req, res) => {
       updateData.password = await bcrypt.hash(updateData.password, 10);
     }
 
+    if (updateData.avatar === null || updateData.avatar === undefined || updateData.avatar === '') {
+      delete updateData.avatar;
+    }
     const user = await User.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
@@ -545,7 +548,7 @@ exports.updateCertification = async (req, res) => {
     const currentUser = req.user;
 
     const user = await User.findById(id);
-     if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (currentUser.role !== 'admin' && currentUser.id !== id) {
       return res.status(403).json({ message: 'You can only update experience for yourself' });

@@ -41,7 +41,15 @@ exports.create = async (req, res) => {
 
     // 🔥 Convert IDs to ObjectId if needed
     const convertedBookingId = typeof bookingId === 'string' ? new mongoose.Types.ObjectId(bookingId) : bookingId;
-    const convertedArvregimenId = arvregimenId && typeof arvregimenId === 'string' ? new mongoose.Types.ObjectId(arvregimenId) : arvregimenId;
+    // const convertedArvregimenId = arvregimenId && typeof arvregimenId === 'string' ? new mongoose.Types.ObjectId(arvregimenId) : arvregimenId;
+    let convertedArvregimenId = undefined;
+    if (
+      arvregimenId &&
+      typeof arvregimenId === 'string' &&
+      mongoose.Types.ObjectId.isValid(arvregimenId)
+    ) {
+      convertedArvregimenId = new mongoose.Types.ObjectId(arvregimenId);
+    }
 
     // 🔥 Create new result
     const newResult = new Result({

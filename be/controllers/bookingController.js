@@ -55,16 +55,24 @@ exports.checkExistingBookings = async (req, res) => {
     const bookedSlots = new Set();
 
     for (const booking of bookings) {
+      let startTime = booking.startTime;
       let endTime = booking.endTime;
 
-      // Nếu không có endTime, tự tính từ startTime + service.duration
-      if (!endTime && booking.serviceId && booking.serviceId.duration) {
-        endTime = calculateEndTime(booking.startTime, booking.serviceId.duration);
+      // Ưu tiên lấy duration từ serviceId, fallback dùng booking.duration nếu có
+      let duration =
+        (booking.serviceId && booking.serviceId.duration) ||
+        booking.duration;
+
+      // Nếu không có endTime → tự tính từ startTime + duration
+      if (!endTime && startTime && duration) {
+        endTime = calculateEndTime(startTime, duration);
       }
 
-      if (endTime) {
-        const slots = generateTimeSlotsInRange(booking.startTime, endTime);
+      if (startTime && endTime) {
+        const slots = generateTimeSlotsInRange(startTime, endTime);
         slots.forEach((slot) => bookedSlots.add(slot));
+      } else {
+        console.warn(`⚠️ Missing time data in booking ${booking._id}`);
       }
     }
 
@@ -75,6 +83,7 @@ exports.checkExistingBookings = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 // 📌 Tạo booking mới
 exports.create = async (req, res) => {

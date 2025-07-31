@@ -11,6 +11,7 @@ const notificationController = require('../controllers/notificationController');
 const reviewController = require('../controllers/reviewController');
 const paymentController = require('../controllers/paymentController');
 const webhookController = require('../controllers/webhookCotroller');
+const { runMedicationReminder, reExaminationReminder } = require('../controllers/cronController');
 
 const upload = require('../middleware/upload');
 const auth = require('../middleware/auth');
@@ -182,5 +183,8 @@ router.route('/reviews/:id')
   .get(reviewController.getById)
   .put(auth, reviewController.updateById)
   .delete(auth, reviewController.deleteById);
+
+router.get('/medication-reminder', runMedicationReminder);
+router.get('/reexam-reminder', reExaminationReminder); 
 
 module.exports = router;

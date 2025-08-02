@@ -1,6 +1,8 @@
 const Booking = require('../models/Booking'); // Điều chỉnh lại path đúng theo dự án của bạn
 const Service = require('../models/Service'); // Đảm bảo model này tồn tại
 const Notification = require('../models/Notification');
+const User = require('../models/User'); 
+
 const mongoose = require('mongoose');
 // Generate 6-digit random booking code
 const generateRandomSixDigitNumber = () => {
@@ -196,6 +198,7 @@ exports.getAll = async (req, res) => {
       doctorName: booking.doctorName,
       status: booking.status,
       meetLink: booking.meetLink,
+      doctorNote: booking.doctorNote,
       isAnonymous: booking.isAnonymous,
       notes: booking.notes
     }));
@@ -279,7 +282,7 @@ exports.updateById = async (req, res) => {
     );
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-    // Gửi notification nếu có meetLink
+    // ✅ Khi staff cập nhật meetLink
     if (req.body.meetLink) {
       try {
         if (booking.userId) {
@@ -290,6 +293,7 @@ exports.updateById = async (req, res) => {
             bookingId: booking._id
           });
         }
+
         if (booking.doctorName) {
           const doctorUser = await User.findOne({ doctorName: booking.doctorName });
           if (doctorUser) {
@@ -303,11 +307,35 @@ exports.updateById = async (req, res) => {
             console.warn(`Doctor with name ${booking.doctorName} not found`);
           }
         }
+
+        // Cập nhật status thành "checked-in"
+        booking.status = "checked-in";
+        await booking.save();
+        console.log(`🔄 Status updated to "checked-in" for booking ${booking._id}`);
+
       } catch (notiError) {
         console.error('Notification creation failed:', notiError.message);
       }
     }
-
+    // ✅ Nếu có doctorNote và booking đã checked-in → cập nhật status thành completed
+if (req.body.doctorNote && booking.status === "checked-in") {
+  booking.status = "completed";
+  await booking.save();
+  console.log(`✅ Đã cập nhật status => completed cho booking ${booking._id} vì đã có doctorNote`);
+    // Gửi thông báo cho user
+      if (booking.userId) {
+        try {
+          await Notification.create({
+            notiName: 'Buổi tư vấn đã hoàn tất',
+            notiDescription: 'Nội dung tư vấn đã được gửi. Cảm ơn bạn đã tham gia buổi tư vấn!',
+            userId: booking.userId,
+            bookingId: booking._id
+          });
+        } catch (err) {
+          console.error("❌ Failed to create completion notification:", err.message);
+        }
+      }
+}
     res.status(200).json(booking);
   } catch (error) {
     console.error('Update booking error:', error);
@@ -317,6 +345,7 @@ exports.updateById = async (req, res) => {
     res.status(400).json({ message: error.message || 'Internal server error' });
   }
 };
+
 
 // 📌 Delete booking
 exports.deleteById = async (req, res) => {

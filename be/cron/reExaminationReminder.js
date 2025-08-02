@@ -4,7 +4,7 @@ const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
 
 // 🔥 Schedule chạy mỗi ngày lúc 2 giờ 30 chiều
-cron.schedule('00 7 * * *', async () => {
+cron.schedule('35 16 * * *', async () => {
   console.log('🔔 Running re-examination reminder cron job...');
 
   try {

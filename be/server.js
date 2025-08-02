@@ -19,6 +19,7 @@ const allowedOrigins = [
 require('../be/cron/reExaminationReminder'); // Import cron job
 require('../be/cron/medicationReminder'); // Import cron job
 require('../be/cron/reminder.job');
+require('../be/cron/meetReminder'); // Import cron job
 
 app.use(cors({
   origin: (origin, callback) => {

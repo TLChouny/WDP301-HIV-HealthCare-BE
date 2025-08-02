@@ -16,6 +16,11 @@ const bookingSchema = new mongoose.Schema({
   originalPrice: { type: Number },
   notes: { type: String },
   meetLink: { type: String },
+  doctorNote: { type: String },
+  notifiedBefore15m: {
+  type: Boolean,
+  default: false,
+},
   currency: { type: String, default: "VND" },
   status: {
     type: String,

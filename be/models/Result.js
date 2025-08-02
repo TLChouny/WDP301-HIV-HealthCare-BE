@@ -2,9 +2,6 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const ResultSchema = new Schema({
-  resultName: { type: String, required: true },
-  resultDescription: { type: String },
-
   // 🩺 Thông tin khám
   symptoms: { type: String }, // triệu chứng hiện tại
   weight: { type: Number }, // cân nặng
@@ -22,6 +19,9 @@ const ResultSchema = new Schema({
   testValue: { type: Number }, // VD: số copies/mL giá trị đo được
   unit: { type: String }, // đơn vị cho testValue
   referenceRange: { type: String }, // khoảng tham chiếu
+  resultName: { type: String, required: true },
+  resultDescription: { type: String },
+  testerName: { type: String }, // tên người thực hiện test
 
   // 💊 Nếu là khám ARV
   reExaminationDate: { type: Date }, // Ngày tái khám

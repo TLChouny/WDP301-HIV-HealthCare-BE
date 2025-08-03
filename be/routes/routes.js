@@ -11,7 +11,7 @@ const notificationController = require('../controllers/notificationController');
 const reviewController = require('../controllers/reviewController');
 const paymentController = require('../controllers/paymentController');
 const webhookController = require('../controllers/webhookCotroller');
-const { runMedicationReminder, reExaminationReminder } = require('../controllers/cronController');
+const { runMedicationReminder, reExaminationReminder, googleMeetReminder } = require('../controllers/cronController');
 
 const upload = require('../middleware/upload');
 const auth = require('../middleware/auth');
@@ -185,6 +185,7 @@ router.route('/reviews/:id')
   .delete(auth, reviewController.deleteById);
 
 router.get('/medication-reminder', runMedicationReminder);
-router.get('/reexam-reminder', reExaminationReminder); 
+router.get('/reexam-reminder', reExaminationReminder);
+router.get('/meet-reminder', googleMeetReminder); // Run meet reminder
 
 module.exports = router;

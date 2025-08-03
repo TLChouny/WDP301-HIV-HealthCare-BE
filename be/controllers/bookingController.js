@@ -49,42 +49,25 @@ exports.checkExistingBookings = async (req, res) => {
       return res.status(400).json({ message: 'Missing doctorName or bookingDate parameter' });
     }
 
-    console.log('🔍 Received query:', { doctorName, bookingDate });
-
     const bookings = await Booking.find({ doctorName, bookingDate }).populate('serviceId');
-    console.log('📦 Found bookings:', bookings.length);
 
-    const bookedSlots = new Set();
+    const bookedSlots = bookings.map((booking) => {
+      const duration =
+        (booking.serviceId && booking.serviceId.duration) || booking.duration || 30;
 
-    for (const booking of bookings) {
-      let startTime = booking.startTime;
-      let endTime = booking.endTime;
+      return {
+        startTime: booking.startTime,
+        duration,
+      };
+    });
 
-      // Ưu tiên lấy duration từ serviceId, fallback dùng booking.duration nếu có
-      let duration =
-        (booking.serviceId && booking.serviceId.duration) ||
-        booking.duration;
-
-      // Nếu không có endTime → tự tính từ startTime + duration
-      if (!endTime && startTime && duration) {
-        endTime = calculateEndTime(startTime, duration);
-      }
-
-      if (startTime && endTime) {
-        const slots = generateTimeSlotsInRange(startTime, endTime);
-        slots.forEach((slot) => bookedSlots.add(slot));
-      } else {
-        console.warn(`⚠️ Missing time data in booking ${booking._id}`);
-      }
-    }
-
-    console.log('⏱️ Booked slots:', [...bookedSlots]);
-    res.status(200).json([...bookedSlots]);
+    return res.status(200).json(bookedSlots);
   } catch (error) {
     console.error('❌ Error in checkExistingBookings:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 
 // 📌 Tạo booking mới

@@ -39,7 +39,7 @@ const sendOTP = async (email, subject, text) => {
 // Hàm gửi OTP cho reset password
 const sendResetPasswordOTP = async (email, otp) => {
   const mailOptions = {
-    from: `"LuluSpa" <${process.env.EMAIL_USER}>`,
+    from: `"HC-HealthCare" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Mã OTP để đặt lại mật khẩu",
     html: `
@@ -66,7 +66,7 @@ const sendResetPasswordOTP = async (email, otp) => {
 
 const sendAdminVerificationEmail = async (email, verifyLink) => {
   const mailOptions = {
-    from: `"vxdat13@gmail.com" <${process.env.EMAIL_USER}>`,
+    from: `"HC-HealthCare" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Xác thực tài khoản",
     html: `

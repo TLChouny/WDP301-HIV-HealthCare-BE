@@ -130,3 +130,52 @@ exports.reExaminationReminder = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+exports.googleMeetReminder = async (req, res) => {
+  console.log('🔔 Triggered Google Meet reminder via API');
+
+  try {
+    const now = new Date();
+    const currentDate = now.toISOString().split("T")[0];
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const bookings = await Booking.find({
+      bookingDate: currentDate,
+      meetLink: { $exists: true, $ne: "" },
+      notifiedBefore15m: { $ne: true },
+      status: { $in: ["pending", "checked-in", "confirmed"] },
+    });
+
+    for (const booking of bookings) {
+      if (!booking.startTime || !booking.startTime.includes(":")) {
+        console.warn(`⚠️ Booking ${booking._id} có startTime không hợp lệ: ${booking.startTime}`);
+        continue;
+      }
+
+      const [hour, minute] = booking.startTime.split(":").map(Number);
+      const bookingMinutes = hour * 60 + minute;
+      const diff = bookingMinutes - nowMinutes;
+
+      console.log(`📆 ${currentDate} | 🕒 Now: ${nowMinutes}m | Booking: ${bookingMinutes}m | Diff: ${diff}m`);
+
+      if (diff >= 14 && diff <= 16) {
+        await Notification.create({
+          notiName: "Sắp tới giờ tư vấn",
+          notiDescription: `Buổi tư vấn của bạn sẽ bắt đầu sau 15 phút. Link Google Meet: ${booking.meetLink}`,
+          userId: booking.userId,
+          bookingId: booking._id,
+        });
+
+        booking.notifiedBefore15m = true;
+        await booking.save();
+
+        console.log(`✅ Đã gửi noti trước 15 phút cho booking ${booking._id}`);
+      }
+    }
+
+    res.status(200).json({ message: 'Google Meet reminders sent successfully' });
+  } catch (err) {
+    console.error("❌ Lỗi Google Meet reminder:", err.message);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};

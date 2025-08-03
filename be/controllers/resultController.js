@@ -3,7 +3,30 @@ const Result = require('../models/Result');
 const Booking = require('../models/Booking');
 const ARVRegimen = require('../models/ARVRegimen');
 const Notification = require('../models/Notification');
-const ObjectId = mongoose.Types.ObjectId;
+
+/**
+ * Auto-generate interpretation note
+ */
+const generateInterpretationNote = ({ testResult, viralLoad, cd4Count, p24Antigen, hivAntibody }) => {
+  if (testResult === 'positive') return 'Kết quả dương tính';
+  if (testResult === 'negative') return 'Kết quả âm tính';
+
+  if (viralLoad != null) {
+    if (viralLoad < 20) return 'Tải lượng virus không phát hiện';
+    if (viralLoad < 1000) return 'Tải lượng virus thấp';
+    return 'Tải lượng virus cao';
+  }
+
+  if (cd4Count != null) {
+    if (cd4Count > 500) return 'CD4 bình thường';
+    if (cd4Count > 200) return 'CD4 thấp';
+    return 'CD4 rất thấp, cần theo dõi đặc biệt';
+  }
+
+  if (p24Antigen != null || hivAntibody != null) return 'Có dấu hiệu nhiễm HIV';
+
+  return '';
+};
 
 /**
  * CREATE RESULT + UPDATE BOOKING + CREATE NOTIFICATION
@@ -13,6 +36,8 @@ exports.create = async (req, res) => {
     const {
       resultName,
       resultDescription,
+      testerName,
+      notes,
       symptoms,
       weight,
       height,
@@ -22,11 +47,18 @@ exports.create = async (req, res) => {
       temperature,
       sampleType,
       testMethod,
-      resultType,
       testResult,
-      testValue,
+      viralLoad,
+      viralLoadReference,
+      viralLoadInterpretation,
+      cd4Count,
+      cd4Reference,
+      cd4Interpretation,
       unit,
-      referenceRange,
+      coInfections,
+      p24Antigen,
+      hivAntibody,
+      interpretationNote, // optional override
       reExaminationDate,
       medicationTime,
       medicationSlot,
@@ -34,27 +66,31 @@ exports.create = async (req, res) => {
       arvregimenId
     } = req.body;
 
-    // ⚠️ Validate required fields
+    // Validate
     if (!resultName || !bookingId) {
       return res.status(400).json({ message: "Missing required fields: resultName, bookingId" });
     }
 
-    // 🔥 Convert IDs to ObjectId if needed
-    const convertedBookingId = typeof bookingId === 'string' ? new mongoose.Types.ObjectId(bookingId) : bookingId;
-    // const convertedArvregimenId = arvregimenId && typeof arvregimenId === 'string' ? new mongoose.Types.ObjectId(arvregimenId) : arvregimenId;
-    let convertedArvregimenId = undefined;
-    if (
-      arvregimenId &&
-      typeof arvregimenId === 'string' &&
-      mongoose.Types.ObjectId.isValid(arvregimenId)
-    ) {
-      convertedArvregimenId = new mongoose.Types.ObjectId(arvregimenId);
-    }
+    const convertedBookingId = new mongoose.Types.ObjectId(bookingId);
+    const convertedArvregimenId = arvregimenId ? new mongoose.Types.ObjectId(arvregimenId) : undefined;
 
-    // 🔥 Create new result
+    // Auto-generate interpretationNote nếu không có
+    const finalInterpretationNote =
+      interpretationNote ||
+      generateInterpretationNote({
+        testResult,
+        viralLoad,
+        cd4Count,
+        p24Antigen,
+        hivAntibody,
+      });
+
+    // Create result
     const newResult = new Result({
       resultName,
       resultDescription,
+      testerName,
+      notes,
       symptoms,
       weight,
       height,
@@ -64,35 +100,42 @@ exports.create = async (req, res) => {
       temperature,
       sampleType,
       testMethod,
-      resultType,
       testResult,
-      testValue,
+      viralLoad,
+      viralLoadReference,
+      viralLoadInterpretation,
+      cd4Count,
+      cd4Reference,
+      cd4Interpretation,
       unit,
-      referenceRange,
+      coInfections,
+      p24Antigen,
+      hivAntibody,
+      interpretationNote: finalInterpretationNote,
       reExaminationDate,
       medicationTime,
       medicationSlot,
       bookingId: convertedBookingId,
-      arvregimenId: convertedArvregimenId
+      arvregimenId: convertedArvregimenId,
     });
 
     const savedResult = await newResult.save();
 
-    // 🔥 Update booking status to 'completed'
+    // Update booking status
     const booking = await Booking.findByIdAndUpdate(
       convertedBookingId,
       { status: 'completed' },
       { new: true }
     );
 
-    // 🔥 Create notification if booking has userId
-    if (booking && booking.userId) {
+    // Notify user
+    if (booking?.userId) {
       await Notification.create({
         notiName: 'Kết quả khám đã sẵn sàng',
         notiDescription: `Kết quả "${resultName}" đã được cập nhật. Vui lòng kiểm tra hồ sơ.`,
         userId: booking.userId,
         bookingId: booking._id,
-        resultId: savedResult._id
+        resultId: savedResult._id,
       });
     }
 
@@ -102,7 +145,6 @@ exports.create = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 /**
  * GET ALL RESULTS
@@ -114,8 +156,8 @@ exports.getAll = async (req, res) => {
         path: 'bookingId',
         populate: [
           { path: 'serviceId', model: 'Service' },
-          { path: 'userId', model: 'User' }
-        ]
+          { path: 'userId', model: 'User' },
+        ],
       })
       .populate('arvregimenId')
       .exec();
@@ -128,29 +170,25 @@ exports.getAll = async (req, res) => {
 };
 
 /**
- * GET ALL RESULTS BY USER ID
+ * GET RESULTS BY USER ID
  */
 exports.getAllByUserId = async (req, res) => {
   try {
     const userId = req.params.userId;
-    if (!userId) {
-      return res.status(400).json({ message: 'userId is required' });
-    }
+    if (!userId) return res.status(400).json({ message: 'userId is required' });
 
-    const bookings = await Booking.find({ userId: userId }).select('_id');
-    const bookingIds = bookings.map(b => b._id);
+    const bookings = await Booking.find({ userId }).select('_id');
+    const bookingIds = bookings.map((b) => b._id);
 
-    if (bookingIds.length === 0) {
-      return res.status(200).json([]);
-    }
+    if (!bookingIds.length) return res.status(200).json([]);
 
     const results = await Result.find({ bookingId: { $in: bookingIds } })
       .populate({
         path: 'bookingId',
         populate: [
           { path: 'serviceId', model: 'Service' },
-          { path: 'userId', model: 'User' }
-        ]
+          { path: 'userId', model: 'User' },
+        ],
       })
       .populate('arvregimenId')
       .exec();
@@ -172,8 +210,8 @@ exports.getById = async (req, res) => {
         path: 'bookingId',
         populate: [
           { path: 'serviceId', model: 'Service' },
-          { path: 'userId', model: 'User' }
-        ]
+          { path: 'userId', model: 'User' },
+        ],
       })
       .populate('arvregimenId')
       .exec();
@@ -192,11 +230,10 @@ exports.getById = async (req, res) => {
  */
 exports.updateById = async (req, res) => {
   try {
-    const result = await Result.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const result = await Result.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!result) return res.status(404).json({ message: 'Result not found' });
 
@@ -223,29 +260,25 @@ exports.deleteById = async (req, res) => {
 };
 
 /**
- * GET ALL RESULTS BY DOCTOR NAME
+ * GET RESULTS BY DOCTOR NAME
  */
 exports.getAllByDoctorName = async (req, res) => {
   try {
     const doctorName = req.params.doctorName;
-    if (!doctorName) {
-      return res.status(400).json({ message: 'doctorName is required' });
-    }
+    if (!doctorName) return res.status(400).json({ message: 'doctorName is required' });
 
-    const bookings = await Booking.find({ doctorName: doctorName }).select('_id');
-    const bookingIds = bookings.map(b => b._id);
+    const bookings = await Booking.find({ doctorName }).select('_id');
+    const bookingIds = bookings.map((b) => b._id);
 
-    if (bookingIds.length === 0) {
-      return res.status(200).json([]);
-    }
+    if (!bookingIds.length) return res.status(200).json([]);
 
     const results = await Result.find({ bookingId: { $in: bookingIds } })
       .populate({
         path: 'bookingId',
         populate: [
           { path: 'serviceId', model: 'Service' },
-          { path: 'userId', model: 'User' }
-        ]
+          { path: 'userId', model: 'User' },
+        ],
       })
       .populate('arvregimenId')
       .exec();

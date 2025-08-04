@@ -19,7 +19,7 @@ const generateInterpretationNote = ({ testResult, viralLoad, cd4Count, p24Antige
 
   if (cd4Count != null) {
     if (cd4Count > 500) return 'CD4 bình thường';
-    if (cd4Count > 200) return 'CD4 thấp';
+    if (cd4Count < 200) return 'CD4 thấp';
     return 'CD4 rất thấp, cần theo dõi đặc biệt';
   }
 
@@ -66,15 +66,16 @@ exports.create = async (req, res) => {
       arvregimenId
     } = req.body;
 
-    // Validate
+    // Validate bắt buộc
     if (!resultName || !bookingId) {
       return res.status(400).json({ message: "Missing required fields: resultName, bookingId" });
     }
 
+    // Convert ID string về ObjectId
     const convertedBookingId = new mongoose.Types.ObjectId(bookingId);
     const convertedArvregimenId = arvregimenId ? new mongoose.Types.ObjectId(arvregimenId) : undefined;
 
-    // Auto-generate interpretationNote nếu không có
+    // Tự động sinh interpretationNote nếu không có
     const finalInterpretationNote =
       interpretationNote ||
       generateInterpretationNote({
@@ -85,7 +86,7 @@ exports.create = async (req, res) => {
         hivAntibody,
       });
 
-    // Create result
+    // Tạo kết quả xét nghiệm
     const newResult = new Result({
       resultName,
       resultDescription,
@@ -121,14 +122,14 @@ exports.create = async (req, res) => {
 
     const savedResult = await newResult.save();
 
-    // Update booking status
+    // Cập nhật trạng thái booking sang "completed"
     const booking = await Booking.findByIdAndUpdate(
       convertedBookingId,
       { status: 'completed' },
       { new: true }
     );
 
-    // Notify user
+    // Gửi thông báo cho user
     if (booking?.userId) {
       await Notification.create({
         notiName: 'Kết quả khám đã sẵn sàng',
@@ -139,12 +140,24 @@ exports.create = async (req, res) => {
       });
     }
 
-    res.status(201).json(savedResult);
+    // Populate lại kết quả vừa tạo để trả về đầy đủ thông tin
+    const populatedResult = await Result.findById(savedResult._id)
+      .populate({
+        path: 'bookingId',
+        populate: [
+          { path: 'serviceId', model: 'Service' },
+          { path: 'userId', model: 'User' },
+        ],
+      })
+      .populate('arvregimenId');
+
+    res.status(201).json(populatedResult);
   } catch (error) {
     console.error('Error creating result:', error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 /**
  * GET ALL RESULTS
@@ -286,6 +299,34 @@ exports.getAllByDoctorName = async (req, res) => {
     res.status(200).json(results);
   } catch (error) {
     console.error('Error in getAllByDoctorName:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * GET RESULT BY BOOKING ID
+ */
+exports.getByBookingId = async (req, res) => {
+  try {
+    const bookingId = req.params.bookingId;
+    if (!bookingId) return res.status(400).json({ message: 'bookingId is required' });
+
+    const result = await Result.findOne({ bookingId })
+      .populate({
+        path: 'bookingId',
+        populate: [
+          { path: 'serviceId', model: 'Service' },
+          { path: 'userId', model: 'User' },
+        ],
+      })
+      .populate('arvregimenId')
+      .exec();
+
+    if (!result) return res.status(404).json({ message: 'Result not found for this booking' });
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error getting result by bookingId:', error);
     res.status(500).json({ message: error.message });
   }
 };
